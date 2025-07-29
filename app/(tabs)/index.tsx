@@ -379,9 +379,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   statCard: {
-    flex: 1,
+    width: (width - 64) / 2, // Account for padding and margins
     alignItems: 'center',
-    padding: 20,
+    padding: width < 375 ? 16 : 20, // Smaller padding on smaller screens
     borderRadius: 16,
     marginHorizontal: 6,
     marginBottom: 12,
@@ -392,21 +392,21 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   statIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: width < 375 ? 40 : 48,
+    height: width < 375 ? 40 : 48,
+    borderRadius: width < 375 ? 20 : 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: width < 375 ? 8 : 12,
   },
   statValue: {
-    fontSize: 24,
+    fontSize: width < 375 ? 20 : 24,
     fontWeight: '800',
     marginBottom: 4,
     letterSpacing: -0.5,
   },
   statLabel: {
-    fontSize: 13,
+    fontSize: width < 375 ? 11 : 13,
     fontWeight: '600',
     textAlign: 'center',
   },

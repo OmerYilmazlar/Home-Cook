@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   statCard: {
-    width: (width - 88 - 20) / 2, // Calculate width to leave 20px gap between cards
+    width: '47%', // Use percentage for consistent spacing
     alignItems: 'center',
     padding: width < 375 ? 12 : 14,
     borderRadius: 16,

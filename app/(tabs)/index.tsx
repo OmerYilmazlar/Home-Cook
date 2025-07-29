@@ -90,7 +90,8 @@ export default function HomeScreen() {
       );
       if (ratedReservations.length === 0) return 0;
       const totalRating = ratedReservations.reduce((sum, r) => sum + (r.rating?.cookRating || 0), 0);
-      return Math.round((totalRating / ratedReservations.length) * 10) / 10;
+      const avg = totalRating / ratedReservations.length;
+      return Math.round(avg * 10) / 10;
     })(),
     totalReviews: reservations.filter(r => 
       cookMeals.some(m => m.id === r.mealId) && r.rating?.cookRating
@@ -172,7 +173,7 @@ export default function HomeScreen() {
                 <Star size={24} color={colors.primary} />
               </View>
               <Text style={[styles.statValue, { color: colors.text }]}>
-                {cookStats.averageRating > 0 ? cookStats.averageRating : 'N/A'}
+                {cookStats.averageRating > 0 ? cookStats.averageRating.toString() : 'N/A'}
               </Text>
               <Text style={[styles.statLabel, { color: colors.subtext }]}>
                 Rating ({cookStats.totalReviews})

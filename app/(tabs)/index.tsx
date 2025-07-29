@@ -379,10 +379,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   statCard: {
-    width: (width - 88) / 2, // Account for container padding (24*2) + card gap (12*2) + container padding (20*2)
+    flex: 1,
     alignItems: 'center',
     padding: 20,
     borderRadius: 16,
+    marginHorizontal: 6,
     marginBottom: 12,
     shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 4 },

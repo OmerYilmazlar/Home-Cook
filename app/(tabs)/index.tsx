@@ -376,14 +376,13 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: 12,
   },
   statCard: {
-    width: (width - 64) / 2, // Account for padding and margins
+    width: (width - 88) / 2, // Account for container padding (48) + gap (40)
     alignItems: 'center',
     padding: width < 375 ? 16 : 20, // Smaller padding on smaller screens
     borderRadius: 16,
-    marginHorizontal: 6,
     marginBottom: 12,
     shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 4 },

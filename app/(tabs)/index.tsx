@@ -379,9 +379,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   statCard: {
-    width: (width - 100) / 2, // Reduced width for better fit on all screens
+    width: (width - 120) / 2, // Further reduced width for better fit on iPhone
     alignItems: 'center',
-    padding: width < 375 ? 14 : 16, // Reduced padding for smaller cards
+    padding: width < 375 ? 12 : 14, // Further reduced padding for smaller cards
     borderRadius: 16,
     marginBottom: 12,
     shadowColor: Colors.shadow,

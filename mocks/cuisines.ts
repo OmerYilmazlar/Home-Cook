@@ -1,0 +1,17 @@
+export const cuisines = [
+  { id: '1', name: 'Italian', icon: '🍝' },
+  { id: '2', name: 'Mexican', icon: '🌮' },
+  { id: '3', name: 'Indian', icon: '🍛' },
+  { id: '4', name: 'Chinese', icon: '🥡' },
+  { id: '5', name: 'Japanese', icon: '🍣' },
+  { id: '6', name: 'Thai', icon: '🍜' },
+  { id: '7', name: 'American', icon: '🍔' },
+  { id: '8', name: 'Mediterranean', icon: '🥙' },
+  { id: '9', name: 'Middle Eastern', icon: '🧆' },
+  { id: '10', name: 'Korean', icon: '🍲' },
+  { id: '11', name: 'Vegan', icon: '🥗' },
+  { id: '12', name: 'Desserts', icon: '🍰' },
+  { id: '13', name: 'Breakfast', icon: '🥞' },
+  { id: '14', name: 'BBQ', icon: '🍖' },
+  { id: '15', name: 'Seafood', icon: '🦞' },
+];

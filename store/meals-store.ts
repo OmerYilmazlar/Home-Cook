@@ -127,6 +127,8 @@ export const useMealsStore = create<MealsState>((set, get) => ({
         createdAt: new Date().toISOString(),
       };
       
+      console.log('Creating new meal with images:', newMeal.images);
+      
 
       
       // Add cuisine type to cook's profile if it's new

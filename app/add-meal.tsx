@@ -204,18 +204,9 @@ export default function AddMealScreen() {
     console.log('User ID:', user.id);
     console.log('Selected images:', images);
     
-    // For demo purposes, convert local image URIs to accessible placeholder images
-    // In a real app, you would upload these images to a server
-    // Map selected images to accessible placeholder URLs for demo purposes
-    const placeholderImages = [
-      'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop', // Pizza/Italian
-      'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop', // Burger/American  
-      'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=400&h=300&fit=crop', // Asian
-      'https://images.unsplash.com/photo-1563379091339-03246963d96c?w=400&h=300&fit=crop', // Mexican
-      'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=300&fit=crop', // Healthy/Mediterranean
-    ];    const finalImages = images.length > 0 
-      ? images.map((_, index) => placeholderImages[index % placeholderImages.length])
-      : [placeholderImages[0]];
+    // Use the actual uploaded images, or fallback to a default placeholder if none
+    const defaultPlaceholder = 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop';
+    const finalImages = images.length > 0 ? images : [defaultPlaceholder];
     
     console.log('Final images to be used:', finalImages);
     
@@ -316,7 +307,7 @@ export default function AddMealScreen() {
       
       <View style={styles.imagesContainer}>
         <Text style={styles.sectionTitle}>Meal Images</Text>
-        <Text style={styles.sectionSubtitle}>Add up to 3 images of your meal (Demo: Selected images will be replaced with sample images)</Text>
+        <Text style={styles.sectionSubtitle}>Add up to 3 images of your meal</Text>
         
         <View style={styles.imageGrid}>
           {images.map((image, index) => (

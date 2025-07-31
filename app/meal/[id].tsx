@@ -200,9 +200,10 @@ export default function MealDetailScreen() {
       >
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: selectedMeal.images[0] }}
+            source={{ uri: selectedMeal.images && selectedMeal.images.length > 0 ? selectedMeal.images[0] : 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop' }}
             style={styles.image}
             contentFit="cover"
+            placeholder="https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop"
           />
         </View>
       

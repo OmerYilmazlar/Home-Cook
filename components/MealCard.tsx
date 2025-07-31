@@ -31,10 +31,11 @@ export default function MealCard({ meal, compact = false, onPress, showCookInfo 
     >
       <View style={styles.imageContainer}>
         <Image
-          source={{ uri: meal.images[0] }}
+          source={{ uri: meal.images && meal.images.length > 0 ? meal.images[0] : 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop' }}
           style={[styles.image, compact && styles.compactImage]}
           contentFit="cover"
           transition={200}
+          placeholder="https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop"
         />
         {meal.availableQuantity === 0 && (
           <View style={styles.soldOutOverlay}>

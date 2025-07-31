@@ -14,6 +14,14 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
   
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+  
   const isCook = user?.userType === 'cook';
   const cookUser = isCook ? (user as Cook) : null;
   
@@ -70,7 +78,7 @@ export default function ProfileScreen() {
             </View>
             
             <View style={styles.userInfo}>
-              <Text style={styles.name}>{user?.name}</Text>
+              <Text style={styles.name}>{user?.name || 'Unknown User'}</Text>
               
               <View style={styles.userTypeContainer}>
                 <Text style={styles.userType}>
@@ -78,16 +86,16 @@ export default function ProfileScreen() {
                 </Text>
               </View>
               
-              {user?.rating && (
+              {user?.rating && user?.reviewCount !== undefined && (
                 <View style={styles.ratingContainer}>
                   <Star size={16} color={Colors.rating} fill={Colors.rating} />
                   <Text style={styles.rating}>
-                    {user.rating.toFixed(1)} ({user.reviewCount} reviews)
+                    {user.rating.toFixed(1)} ({user.reviewCount || 0} reviews)
                   </Text>
                 </View>
               )}
               
-              {user?.location && (
+              {user?.location?.address && (
                 <View style={styles.locationContainer}>
                   <MapPin size={16} color={Colors.white} />
                   <Text style={styles.location} numberOfLines={1}>
@@ -124,13 +132,13 @@ export default function ProfileScreen() {
         />
       </View>
       
-      {isCook && cookUser?.cuisineTypes && cookUser.cuisineTypes.length > 0 && (
+      {isCook && cookUser?.cuisineTypes && Array.isArray(cookUser.cuisineTypes) && cookUser.cuisineTypes.length > 0 && (
         <View style={styles.cuisineContainer}>
           <Text style={styles.sectionTitle}>Cuisine Types</Text>
           <View style={styles.cuisineTagsContainer}>
-            {(cookUser.cuisineTypes || []).map((cuisine: string, index: number) => (
+            {cookUser.cuisineTypes.map((cuisine: string, index: number) => (
               <View key={index} style={styles.cuisineTag}>
-                <Text style={styles.cuisineText}>{cuisine}</Text>
+                <Text style={styles.cuisineText}>{cuisine || ''}</Text>
               </View>
             ))}
           </View>

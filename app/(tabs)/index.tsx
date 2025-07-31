@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
   },
   addMealButton: {
     borderRadius: 12,
-    paddingHorizontal: 14,
+    paddingHorizontal: 4,
     paddingVertical: 10,
     minWidth: 100,
     shadowColor: Colors.primary,

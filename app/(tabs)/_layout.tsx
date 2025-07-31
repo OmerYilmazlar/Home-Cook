@@ -12,7 +12,7 @@ export default function TabLayout() {
   const { conversations, initializeMessages, fetchConversations } = useMessagingStore();
   const { colors } = useTheme();
   const isCook = user?.userType === 'cook';
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   // Calculate total unread messages
   const totalUnreadMessages = conversations.reduce((total, conversation) => {
@@ -54,7 +54,7 @@ export default function TabLayout() {
     // Set up periodic refresh every 30 seconds
     intervalRef.current = setInterval(() => {
       fetchConversations(user.id);
-    }, 30000);
+    }, 30000) as ReturnType<typeof setInterval>;
     
     // Handle app state changes
     const handleAppStateChange = (nextAppState: string) => {

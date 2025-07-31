@@ -282,7 +282,7 @@ export default function ReservationDetailScreen() {
       {isCook && selectedReservation.status === 'ready_for_pickup' && (
         <View style={styles.actionContainer}>
           <Text style={styles.waitingText}>
-            ⏳ Waiting for customer pickup & payment confirmation
+            Waiting for customer pickup & payment confirmation
           </Text>
         </View>
       )}
@@ -290,7 +290,7 @@ export default function ReservationDetailScreen() {
       {isCustomer && selectedReservation.status === 'ready_for_pickup' && (
         <View style={styles.actionContainer}>
           <Text style={styles.pickupReadyText}>
-            ✅ Your order is ready for pickup!
+            Your order is ready for pickup!
           </Text>
           <Button
             title="Confirm Pickup & Payment"

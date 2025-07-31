@@ -55,28 +55,32 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
     
     try {
       console.log('Fetching reservation by ID:', id);
+      console.log('Available reservations in mock data:', mockReservations.map(r => ({ id: r.id, status: r.status })));
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 300));
       
       const state = get();
+      console.log('Available reservations in state:', state.reservations.map(r => ({ id: r.id, status: r.status })));
       
-      // First check in all reservations (includes newly created ones)
-      let reservation = state.reservations.find(r => r.id === id);
-      
-      // If not found, check in mock data
-      if (!reservation) {
-        reservation = mockReservations.find(r => r.id === id);
-      }
-      
-      // If still not found, check in customer/cook reservations
-      if (!reservation) {
-        reservation = state.customerReservations.find(r => r.id === id) || 
-                     state.cookReservations.find(r => r.id === id);
-      }
+      // Search in all possible locations
+      let reservation = 
+        // First check in all reservations (includes newly created ones)
+        state.reservations.find(r => r.id === id) ||
+        // Check in mock data
+        mockReservations.find(r => r.id === id) ||
+        // Check in customer/cook reservations
+        state.customerReservations.find(r => r.id === id) ||
+        state.cookReservations.find(r => r.id === id);
       
       if (!reservation) {
         console.error('Reservation not found with ID:', id);
+        console.error('Available reservation IDs:', [
+          ...state.reservations.map(r => r.id),
+          ...mockReservations.map(r => r.id),
+          ...state.customerReservations.map(r => r.id),
+          ...state.cookReservations.map(r => r.id)
+        ]);
         throw new Error('Reservation not found');
       }
       
@@ -174,6 +178,7 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
       // CRITICAL: Add to mock data directly for persistence
       mockReservations.push(newReservation);
       console.log('Added new reservation to mock data. Total mock reservations:', mockReservations.length);
+      console.log('New reservation added with ID:', newReservation.id);
       
       // Process payment when creating reservation
       try {

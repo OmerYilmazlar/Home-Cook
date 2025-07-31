@@ -200,7 +200,7 @@ export default function EditProfileScreen() {
           error={errors.email}
         />
         
-        <View>
+        <View style={styles.inputWithValidation}>
           <Input
             label="Phone Number"
             placeholder="(555) 123-4567"
@@ -208,6 +208,7 @@ export default function EditProfileScreen() {
             onChangeText={handlePhoneChange}
             keyboardType="phone-pad"
             error={errors.phone}
+            containerStyle={phone && phoneValid ? styles.inputWithSuccessValidation : undefined}
             rightIcon={
               phone ? (
                 phoneValid ? (
@@ -223,7 +224,7 @@ export default function EditProfileScreen() {
           )}
         </View>
         
-        <View>
+        <View style={styles.inputWithValidation}>
           <Input
             label="Address"
             placeholder="123 Main St, City, State ZIP"
@@ -231,6 +232,7 @@ export default function EditProfileScreen() {
             onChangeText={handleAddressChange}
             leftIcon={<MapPin size={20} color={Colors.subtext} />}
             error={errors.address}
+            containerStyle={address && addressValid ? styles.inputWithSuccessValidation : undefined}
             rightIcon={
               address ? (
                 addressValid ? (
@@ -353,12 +355,18 @@ const styles = StyleSheet.create({
     marginTop: 24,
     height: 50,
   },
+  inputWithValidation: {
+    marginBottom: 16,
+  },
+  inputWithSuccessValidation: {
+    marginBottom: 4,
+  },
   validationSuccess: {
     fontSize: 12,
     color: Colors.success,
-    marginTop: 6,
+    marginTop: 4,
     marginLeft: 4,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   suggestionsContainer: {
     backgroundColor: Colors.white,

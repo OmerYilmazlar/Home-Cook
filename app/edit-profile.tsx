@@ -47,9 +47,13 @@ export default function EditProfileScreen() {
   const handlePhoneChange = (text: string) => {
     // Only allow digits, spaces, parentheses, hyphens, and plus sign
     const cleanInput = text.replace(/[^\d\s\(\)\-\+]/g, '');
+    
+    // Limit to reasonable phone number length (15 characters max for formatted number)
+    if (cleanInput.length > 15) return;
+    
     const formatted = formatPhoneNumber(cleanInput, phone);
     
-    // Only update if the formatted result is different and not longer than expected
+    // Only update if the formatted result is different
     if (formatted !== phone) {
       setPhone(formatted);
       setPhoneValid(validatePhoneNumber(formatted));
@@ -352,8 +356,9 @@ const styles = StyleSheet.create({
   validationSuccess: {
     fontSize: 12,
     color: Colors.success,
-    marginTop: 4,
+    marginTop: 2,
     marginLeft: 4,
+    marginBottom: 4,
   },
   suggestionsContainer: {
     backgroundColor: Colors.white,

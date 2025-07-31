@@ -110,7 +110,7 @@ export default function HomeScreen() {
       }
     >
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerLeft}>
           <Text style={[styles.greeting, { color: colors.text }]}>Hello, {user?.name?.split(' ')[0]}</Text>
           <View style={styles.locationContainer}>
             <MapPin size={16} color={colors.subtext} />
@@ -121,13 +121,15 @@ export default function HomeScreen() {
         </View>
         
         {isCook && (
-          <Button
-            title="Add Meal"
-            onPress={handleAddMeal}
-            size="small"
-            leftIcon={<Plus size={16} color={colors.white} />}
-            style={styles.addMealButton}
-          />
+          <View style={styles.headerRight}>
+            <Button
+              title="Add Meal"
+              onPress={handleAddMeal}
+              size="small"
+              leftIcon={<Plus size={16} color={colors.white} />}
+              style={styles.addMealButton}
+            />
+          </View>
         )}
       </View>
       
@@ -324,10 +326,18 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 28,
     paddingTop: 8,
     minHeight: 60,
+  },
+  headerLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  headerRight: {
+    flexShrink: 0,
+    alignItems: 'flex-end',
   },
   greeting: {
     fontSize: 28,
@@ -349,8 +359,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    minWidth: 90,
-    alignSelf: 'center',
+    maxWidth: 100,
+    flexShrink: 1,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,

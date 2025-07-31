@@ -324,10 +324,10 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 28,
     paddingTop: 8,
-    paddingRight: 4,
+    minHeight: 60,
   },
   greeting: {
     fontSize: 28,
@@ -347,9 +347,10 @@ const styles = StyleSheet.create({
   },
   addMealButton: {
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    minWidth: 100,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minWidth: 90,
+    alignSelf: 'center',
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,

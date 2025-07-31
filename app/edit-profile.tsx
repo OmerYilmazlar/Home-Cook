@@ -356,9 +356,9 @@ const styles = StyleSheet.create({
   validationSuccess: {
     fontSize: 12,
     color: Colors.success,
-    marginTop: 2,
+    marginTop: 6,
     marginLeft: 4,
-    marginBottom: 4,
+    marginBottom: 8,
   },
   suggestionsContainer: {
     backgroundColor: Colors.white,

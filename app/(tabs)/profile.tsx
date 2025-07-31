@@ -128,7 +128,7 @@ export default function ProfileScreen() {
         <View style={styles.cuisineContainer}>
           <Text style={styles.sectionTitle}>Cuisine Types</Text>
           <View style={styles.cuisineTagsContainer}>
-            {cookUser.cuisineTypes.map((cuisine: string, index: number) => (
+            {(cookUser.cuisineTypes || []).map((cuisine: string, index: number) => (
               <View key={index} style={styles.cuisineTag}>
                 <Text style={styles.cuisineText}>{cuisine}</Text>
               </View>

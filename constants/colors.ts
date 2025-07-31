@@ -22,5 +22,29 @@ const lightColors = {
   accent: "#8B5CF6",
 } as const;
 
-export { lightColors };
+const darkColors = {
+  primary: "#FF6B35", // Keep the same vibrant orange
+  secondary: "#4ECDC4", // Keep the same soft teal
+  background: "#0F0F0F",
+  card: "#1C1C1E",
+  cardSecondary: "#2C2C2E",
+  text: "#FFFFFF",
+  subtext: "#8E8E93",
+  border: "#3A3A3C",
+  borderLight: "#2C2C2E",
+  error: "#EF4444",
+  success: "#10B981",
+  warning: "#F59E0B",
+  rating: "#FFC107",
+  inactive: "#3A3A3C",
+  grey: "#8E8E93",
+  white: "#FFFFFF",
+  black: "#000000",
+  transparent: "transparent",
+  overlay: "rgba(0, 0, 0, 0.7)",
+  shadow: "rgba(0, 0, 0, 0.3)",
+  accent: "#8B5CF6",
+} as const;
+
+export { lightColors, darkColors };
 export default lightColors;

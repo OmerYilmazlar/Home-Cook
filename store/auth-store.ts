@@ -2,7 +2,43 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, UserType } from '@/types';
-import { mockCooks, mockCustomers } from '@/mocks/users';
+
+// Temporary inline mock data to fix the import issue
+const tempMockUsers: User[] = [
+  // Cook - Maria Garcia
+  {
+    id: '1',
+    name: 'Maria Garcia',
+    email: 'maria.garcia@email.com',
+    userType: 'cook',
+    bio: 'Passionate home cook specializing in authentic Mexican cuisine. I love sharing traditional family recipes passed down through generations.',
+    location: {
+      address: '123 Mission Street, San Francisco, CA',
+      latitude: 37.7749,
+      longitude: -122.4194
+    },
+    rating: 0, // New cook, no ratings yet
+    reviewCount: 0,
+    avatar: 'https://images.unsplash.com/photo-1494790108755-2616b332c1c2?w=200&h=200&fit=crop&crop=face',
+    phone: '+1-555-0123'
+  },
+  
+  // Customer - Alex Johnson
+  {
+    id: '101',
+    name: 'Alex Johnson',
+    email: 'alex.johnson@email.com',
+    userType: 'customer',
+    bio: 'Food enthusiast who loves discovering authentic homemade dishes from local cooks.',
+    location: {
+      address: '456 Castro Street, San Francisco, CA',
+      latitude: 37.7620,
+      longitude: -122.4349
+    },
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
+    phone: '+1-555-0124'
+  }
+];
 
 interface AuthState {
   user: User | null;
@@ -10,7 +46,7 @@ interface AuthState {
   isLoading: boolean;
   isInitialized: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<boolean>;
   signup: (userData: Partial<User>, password: string, userType: UserType) => Promise<void>;
   logout: () => void;
   updateProfile: (userData: Partial<User>) => Promise<void>;
@@ -27,31 +63,42 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   isInitialized: true, // Set to true by default for now
   error: null,
       
-      login: async (email: string, password: string) => {
-        set({ isLoading: true, error: null });
-        
-        try {
-          // Simulate API call
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Find user in mock data
-          const allUsers = [...mockCooks, ...mockCustomers];
-          const user = allUsers.find(u => u.email === email);
-          
-          if (!user) {
-            throw new Error('Invalid email or password');
-          }
-          
-          // In a real app, we would verify the password here
-          
-          set({ user, isAuthenticated: true, isLoading: false });
-        } catch (error) {
-          set({ 
-            error: error instanceof Error ? error.message : 'An error occurred', 
-            isLoading: false 
-          });
-        }
-      },
+      login: async (email: string, password: string): Promise<boolean> => {
+    try {
+      set({ isLoading: true, error: null });
+      
+      console.log('Login attempt for:', email);
+      console.log('tempMockUsers available:', tempMockUsers ? 'YES' : 'NO');
+      console.log('tempMockUsers length:', tempMockUsers?.length || 'undefined');
+      
+      // Find user by email
+      const user = tempMockUsers?.find(u => u.email === email);
+      
+      if (!user) {
+        console.log('User not found');
+        set({ isLoading: false, error: 'User not found' });
+        return false;
+      }
+
+      // Set the current user
+      set({ 
+        user: user, 
+        isAuthenticated: true, 
+        isLoading: false, 
+        error: null 
+      });
+      
+      console.log('Login successful:', user);
+      return true;
+    } catch (error) {
+      console.error('Login error:', error);
+      set({ 
+        isLoading: false, 
+        error: error instanceof Error ? error.message : 'Login failed' 
+      });
+      return false;
+    }
+  },
       
       signup: async (userData, password, userType) => {
         set({ isLoading: true, error: null });
@@ -61,8 +108,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           await new Promise(resolve => setTimeout(resolve, 1000));
           
           // Check if email already exists
-          const allUsers = [...mockCooks, ...mockCustomers];
-          const existingUser = allUsers.find(u => u.email === userData.email);
+          const existingUser = tempMockUsers.find(u => u.email === userData.email);
           
           if (existingUser) {
             throw new Error('Email already in use');
@@ -93,24 +139,14 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       initialize: () => {
         console.log('Auth store initializing...');
         
-        // For development: Auto-login as a cook to test cook features
-        const testCook = mockCooks.find(c => c.id === '1'); // Maria Garcia
-        if (testCook) {
-          set({ 
-            user: testCook, 
-            isAuthenticated: true, 
-            isInitialized: true 
-          });
-          console.log('Auto-logged in as test cook:', testCook.name);
-        } else {
-          set({ isInitialized: true });
-        }
+        // For development, don't auto-login - let users login manually
+        set({ isInitialized: true });
         
-        console.log('Auth store initialized');
+        console.log('Auth store initialized without auto-login');
       },
       
       switchToTestCook: () => {
-        const testCook = mockCooks.find(c => c.id === '1'); // Maria Garcia
+        const testCook = tempMockUsers.find(u => u.id === '1' && u.userType === 'cook'); // Maria Garcia
         if (testCook) {
           set({ user: testCook, isAuthenticated: true });
           console.log('Switched to test cook:', testCook.name);
@@ -118,7 +154,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       },
       
       switchToTestCustomer: () => {
-        const testCustomer = mockCustomers.find(c => c.id === '101'); // Alex Johnson
+        const testCustomer = tempMockUsers.find(u => u.id === '101' && u.userType === 'customer'); // Alex Johnson
         if (testCustomer) {
           set({ user: testCustomer, isAuthenticated: true });
           console.log('Switched to test customer:', testCustomer.name);

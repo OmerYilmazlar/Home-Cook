@@ -171,6 +171,8 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
         ...reservation,
         id: `new-${Date.now()}`,
         createdAt: new Date().toISOString(),
+        paymentStatus: 'pending', // Payment will be processed later
+        totalAmount: reservation.totalAmount || reservation.totalPrice,
       };
       
       console.log('New reservation created:', newReservation);
@@ -180,31 +182,14 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
       console.log('Added new reservation to mock data. Total mock reservations:', mockReservations.length);
       console.log('New reservation added with ID:', newReservation.id);
       
-      // Process payment when creating reservation
+      // Decrease meal quantity immediately upon reservation
       try {
-        const { processPayment } = usePaymentStore.getState();
-        const paymentAmount = reservation.totalAmount || reservation.totalPrice;
-        const transaction = await processPayment(
-          reservation.customerId,
-          reservation.cookId,
-          paymentAmount,
-          newReservation.id,
-          `Payment for ${reservation.quantity}x meal reservation`
-        );
-        
-        // Update reservation with payment info
-        newReservation.paymentId = transaction.id;
-        newReservation.paymentStatus = 'pending' as const; // Payment is processed but not completed yet
-        newReservation.totalAmount = paymentAmount;
-        
-        console.log('Payment processed for reservation:', {
-          reservationId: newReservation.id,
-          transactionId: transaction.id,
-          amount: paymentAmount
-        });
-      } catch (paymentError) {
-        console.error('Payment failed:', paymentError);
-        throw new Error(`Payment failed: ${paymentError instanceof Error ? paymentError.message : 'Unknown error'}`);
+        const { decreaseMealQuantity } = useMealsStore.getState();
+        decreaseMealQuantity(reservation.mealId, reservation.quantity);
+        console.log(`Decreased meal quantity for meal ${reservation.mealId} by ${reservation.quantity}`);
+      } catch (error) {
+        console.error('Failed to decrease meal quantity:', error);
+        // Continue with reservation creation even if quantity update fails
       }
       
       set(state => {
@@ -260,6 +245,46 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
       
+      // Process payment when meal is ready for pickup
+      if (status === 'ready_for_pickup') {
+        try {
+          const { reservations } = get();
+          const reservation = reservations.find(r => r.id === id);
+          
+          if (reservation && !reservation.paymentId) {
+            const { processPayment } = usePaymentStore.getState();
+            const paymentAmount = reservation.totalAmount || reservation.totalPrice;
+            const transaction = await processPayment(
+              reservation.customerId,
+              reservation.cookId,
+              paymentAmount,
+              reservation.id,
+              `Payment for ${reservation.quantity}x meal pickup`
+            );
+            
+            console.log('Payment processed for ready meal:', {
+              reservationId: reservation.id,
+              transactionId: transaction.id,
+              amount: paymentAmount
+            });
+            
+            // Update the reservation with payment info in mock data
+            const mockReservation = mockReservations.find(r => r.id === id);
+            if (mockReservation) {
+              mockReservation.paymentId = transaction.id;
+              mockReservation.paymentStatus = 'paid';
+            }
+          }
+        } catch (paymentError) {
+          console.error('Payment failed for ready meal:', paymentError);
+          set({ 
+            error: `Payment failed: ${paymentError instanceof Error ? paymentError.message : 'Unknown error'}`, 
+            isLoading: false 
+          });
+          throw new Error(`Payment failed: ${paymentError instanceof Error ? paymentError.message : 'Unknown error'}`);
+        }
+      }
+      
       // Handle payment completion when order is completed
       if (status === 'completed') {
         try {
@@ -287,8 +312,8 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
         const updatedReservations = state.reservations.map(reservation => {
           if (reservation.id === id) {
             const updatedReservation = { ...reservation, status };
-            // Mark payment as paid when order is completed
-            if (status === 'completed' && reservation.paymentId) {
+            // Mark payment as paid when meal is ready for pickup or completed
+            if (status === 'ready_for_pickup' || status === 'completed') {
               updatedReservation.paymentStatus = 'paid' as const;
             }
             return updatedReservation;
@@ -300,7 +325,7 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
         const updatedCustomerReservations = state.customerReservations.map(reservation => {
           if (reservation.id === id) {
             const updatedReservation = { ...reservation, status };
-            if (status === 'completed' && reservation.paymentId) {
+            if (status === 'ready_for_pickup' || status === 'completed') {
               updatedReservation.paymentStatus = 'paid' as const;
             }
             return updatedReservation;
@@ -312,7 +337,7 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
         const updatedCookReservations = state.cookReservations.map(reservation => {
           if (reservation.id === id) {
             const updatedReservation = { ...reservation, status };
-            if (status === 'completed' && reservation.paymentId) {
+            if (status === 'ready_for_pickup' || status === 'completed') {
               updatedReservation.paymentStatus = 'paid' as const;
             }
             return updatedReservation;

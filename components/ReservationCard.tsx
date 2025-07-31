@@ -169,7 +169,7 @@ export default function ReservationCard({
           {reservation.status === 'ready_for_pickup' && (
             <View style={styles.pickupInfo}>
               <Text style={styles.pickupText}>
-                ✅ Ready for customer pickup & payment
+                ✅ Ready for customer pickup (Payment processed)
               </Text>
             </View>
           )}

@@ -13,7 +13,7 @@ import MealCard from '@/components/MealCard';
 import CookCard from '@/components/CookCard';
 import Button from '@/components/Button';
 import { mockCooks } from '@/mocks/users';
-import { Meal } from '@/types';
+import { Meal, Cook } from '@/types';
 
 const { width } = Dimensions.get('window');
 
@@ -70,36 +70,36 @@ export default function HomeScreen() {
   
   // Calculate cook stats
   const cookStats = {
-    activeMeals: cookMeals.length,
-    totalOrders: reservations.filter(r => 
-      cookMeals.some(m => m.id === r.mealId) && r.status !== 'cancelled'
+    activeMeals: cookMeals?.length || 0,
+    totalOrders: (reservations || []).filter(r => 
+      (cookMeals || []).some(m => m.id === r.mealId) && r.status !== 'cancelled'
     ).length,
-    weeklyEarnings: roundCurrency(reservations
+    weeklyEarnings: roundCurrency((reservations || [])
       .filter(r => {
-        const meal = cookMeals.find(m => m.id === r.mealId);
+        const meal = (cookMeals || []).find(m => m.id === r.mealId);
         const isThisWeek = new Date(r.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         return meal && r.status === 'completed' && isThisWeek;
       })
       .reduce((sum, r) => {
-        const meal = cookMeals.find(m => m.id === r.mealId);
+        const meal = (cookMeals || []).find(m => m.id === r.mealId);
         return sum + (meal ? meal.price * r.quantity : 0);
       }, 0)),
     averageRating: (() => {
-      const ratedReservations = reservations.filter(r => 
-        cookMeals.some(m => m.id === r.mealId) && r.rating?.cookRating
+      const ratedReservations = (reservations || []).filter(r => 
+        (cookMeals || []).some(m => m.id === r.mealId) && r.rating?.cookRating
       );
       if (ratedReservations.length === 0) return 0;
       const totalRating = ratedReservations.reduce((sum, r) => sum + (r.rating?.cookRating || 0), 0);
       const avg = totalRating / ratedReservations.length;
       return Math.round(avg * 10) / 10;
     })(),
-    totalReviews: reservations.filter(r => 
-      cookMeals.some(m => m.id === r.mealId) && r.rating?.cookRating
+    totalReviews: (reservations || []).filter(r => 
+      (cookMeals || []).some(m => m.id === r.mealId) && r.rating?.cookRating
     ).length
   };
   
-  const featuredMeals = isCook ? cookMeals.slice(0, 4) : meals.slice(0, 4);
-  const topCooks = mockCooks.slice(0, 3);
+  const featuredMeals = isCook ? (cookMeals || []).slice(0, 4) : (meals || []).slice(0, 4);
+  const topCooks = (mockCooks || []).slice(0, 3) as Cook[];
   
   return (
     <ScrollView
@@ -213,12 +213,12 @@ export default function HomeScreen() {
           </View>
           
           <View style={styles.reviewsContainer}>
-            {reservations
-              .filter(r => cookMeals.some(m => m.id === r.mealId) && r.rating?.cookRating)
+            {(reservations || [])
+              .filter(r => (cookMeals || []).some(m => m.id === r.mealId) && r.rating?.cookRating)
               .sort((a, b) => new Date(b.rating?.createdAt || 0).getTime() - new Date(a.rating?.createdAt || 0).getTime())
               .slice(0, 3)
               .map(reservation => {
-                const meal = cookMeals.find(m => m.id === reservation.mealId);
+                const meal = (cookMeals || []).find(m => m.id === reservation.mealId);
                 return (
                   <View key={reservation.id} style={[styles.reviewCard, { backgroundColor: colors.card }]}>
                     <View style={styles.reviewHeader}>
@@ -346,7 +346,9 @@ const styles = StyleSheet.create({
   },
   addMealButton: {
     borderRadius: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
+    marginRight: 12,
+    maxWidth: 100,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,

@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Bell, Shield, Globe, HelpCircle, Info, ChevronRight, Moon, Volume2 } from 'lucide-react-native';
+import { Bell, Shield, HelpCircle, Info, ChevronRight, Moon, Volume2 } from 'lucide-react-native';
 import { useAuthStore } from '@/store/auth-store';
 import { useTheme } from '@/store/theme-store';
-// Import removed as we're using the theme context
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -49,16 +48,7 @@ export default function SettingsScreen() {
       [{ text: 'OK' }]
     );
   };
-  
-  const handleLanguage = () => {
-    playSound('tap');
-    Alert.alert(
-      'Language',
-      'Select your preferred language:\n\n• English (Current)\n• Spanish\n• French\n• German\n• Italian',
-      [{ text: 'OK' }]
-    );
-  };
-  
+
   const handleHelp = () => {
     playSound('tap');
     Alert.alert(
@@ -171,17 +161,6 @@ export default function SettingsScreen() {
             <Text style={[styles.settingText, { color: colors.text }]}>Privacy Settings</Text>
           </View>
           <ChevronRight size={20} color={colors.subtext} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={[styles.settingItem, { borderBottomColor: colors.border }]} onPress={handleLanguage}>
-          <View style={styles.settingInfo}>
-            <Globe size={20} color={colors.primary} />
-            <Text style={[styles.settingText, { color: colors.text }]}>Language</Text>
-          </View>
-          <View style={styles.settingRight}>
-            <Text style={[styles.settingValue, { color: colors.subtext }]}>English</Text>
-            <ChevronRight size={20} color={colors.subtext} />
-          </View>
         </TouchableOpacity>
       </View>
       

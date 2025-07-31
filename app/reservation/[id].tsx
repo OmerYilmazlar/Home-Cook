@@ -47,9 +47,9 @@ export default function ReservationDetailScreen() {
     );
   }
   
-  const meal = meals.find(m => m.id === selectedReservation.mealId);
-  const cook = mockCooks.find(c => c.id === selectedReservation.cookId);
-  const customer = mockCustomers.find(c => c.id === selectedReservation.customerId);
+  const meal = (meals || []).find(m => m.id === selectedReservation.mealId);
+  const cook = (mockCooks || []).find(c => c.id === selectedReservation.cookId);
+  const customer = (mockCustomers || []).find(c => c.id === selectedReservation.customerId);
   
   console.log('Meal lookup:', {
     mealId: selectedReservation.mealId,
@@ -116,9 +116,28 @@ export default function ReservationDetailScreen() {
   const handleUpdateStatus = async (status: any) => {
     try {
       await updateReservationStatus(selectedReservation.id, status);
-      Alert.alert('Success', `Reservation has been ${status}`);
+      
+      if (status === 'ready_for_pickup') {
+        Alert.alert(
+          'Meal Ready & Payment Processed! 🍽️💳',
+          'The meal is ready for pickup and payment has been successfully processed. The customer will be notified.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Success', `Reservation has been ${status.replace('_', ' ')}`);
+      }
     } catch (error) {
-      Alert.alert('Error', 'Failed to update reservation status');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update reservation status';
+      
+      if (errorMessage.includes('Payment failed')) {
+        Alert.alert(
+          'Payment Failed',
+          'The meal could not be marked as ready because payment processing failed. Please check customer\'s wallet balance.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Error', errorMessage);
+      }
     }
   };
   
@@ -282,7 +301,7 @@ export default function ReservationDetailScreen() {
       {isCook && selectedReservation.status === 'ready_for_pickup' && (
         <View style={styles.actionContainer}>
           <Text style={styles.waitingText}>
-            Waiting for customer pickup & payment confirmation
+            Meal is ready! Payment has been processed. Waiting for customer pickup.
           </Text>
         </View>
       )}
@@ -290,10 +309,10 @@ export default function ReservationDetailScreen() {
       {isCustomer && selectedReservation.status === 'ready_for_pickup' && (
         <View style={styles.actionContainer}>
           <Text style={styles.pickupReadyText}>
-            Your order is ready for pickup!
+            Your order is ready for pickup! Payment has been processed.
           </Text>
           <Button
-            title="Confirm Pickup & Payment"
+            title="Confirm Pickup"
             onPress={() => handleUpdateStatus('completed')}
             variant="primary"
             style={styles.actionButton}

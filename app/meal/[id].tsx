@@ -11,8 +11,6 @@ import { useMessagingStore } from '@/store/messaging-store';
 import { usePaymentStore } from '@/store/payment-store';
 import Colors from '@/constants/colors';
 import Button from '@/components/Button';
-import ReviewCard from '@/components/ReviewCard';
-import { mockReviews } from '@/mocks/reviews';
 import { mockCooks, mockCustomers } from '@/mocks/users';
 
 export default function MealDetailScreen() {
@@ -22,7 +20,7 @@ export default function MealDetailScreen() {
   
   const { selectedMeal, fetchMealById, isLoading } = useMealsStore();
   const { user } = useAuthStore();
-  const { createReservation } = useReservationsStore();
+  const { createReservation, reservations, fetchReservations } = useReservationsStore();
   const { createConversation } = useMessagingStore();
   const { initializeWallet } = usePaymentStore();
   
@@ -33,6 +31,8 @@ export default function MealDetailScreen() {
     if (id) {
       fetchMealById(id);
     }
+    // Fetch reservations to get the reviews
+    fetchReservations();
   }, [id]);
   
   useEffect(() => {
@@ -59,19 +59,16 @@ export default function MealDetailScreen() {
     );
   }
   
-  const cook = mockCooks.find(c => c.id === selectedMeal.cookId);
+  const cook = (mockCooks || []).find(c => c.id === selectedMeal.cookId);
   
-  const mealReviews = mockReviews.filter(r => r.mealId === selectedMeal.id);
+  if (!cook) {
+    console.log('Cook not found for meal:', selectedMeal.cookId);
+  }
   
-  const getCustomerName = (customerId: string) => {
-    const customer = mockCustomers.find(c => c.id === customerId);
-    return customer?.name || 'Anonymous';
-  };
-  
-  const getCustomerAvatar = (customerId: string) => {
-    const customer = mockCustomers.find(c => c.id === customerId);
-    return customer?.avatar;
-  };
+  // Get actual reviews from reservations that have ratings for this meal
+  const mealReviews = (reservations || [])
+    .filter(r => r.mealId === selectedMeal.id && r.rating)
+    .sort((a, b) => new Date(b.rating!.createdAt).getTime() - new Date(a.rating!.createdAt).getTime());
   
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -130,8 +127,8 @@ export default function MealDetailScreen() {
       });
       
       Alert.alert(
-        'Payment & Reservation Successful! 💳',
-        `Payment of $${(selectedMeal.price * quantity).toFixed(2)} processed successfully. Your meal has been reserved and the cook has been notified.`,
+        'Reservation Successful! 🎉',
+        `Your meal has been reserved for pickup at ${new Date(selectedPickupTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}. The cook has been notified and will prepare your order. Payment will be processed when your meal is ready for pickup.`,
         [
           {
             text: 'View Orders',
@@ -147,28 +144,7 @@ export default function MealDetailScreen() {
       );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to reserve meal';
-      
-      if (errorMessage.includes('Payment failed')) {
-        Alert.alert(
-          'Payment Failed 💳❌',
-          `${errorMessage}\n\nPlease check your wallet balance and try again.`,
-          [
-            {
-              text: 'Check Wallet',
-              onPress: () => router.push('/profile'),
-            },
-            {
-              text: 'Try Again',
-              onPress: handleReserve,
-            },
-            {
-              text: 'Cancel',
-            },
-          ]
-        );
-      } else {
-        Alert.alert('Reservation Failed', errorMessage);
-      }
+      Alert.alert('Reservation Failed', errorMessage);
     }
   };
   
@@ -231,13 +207,15 @@ export default function MealDetailScreen() {
           )}
           
           <View style={styles.cookInfo}>
-            <Text style={styles.cookName}>By {cook?.name}</Text>
-            <TouchableOpacity onPress={() => router.push(`/cook/${cook?.id}`)}>
-              <Text style={styles.viewProfile}>View Profile</Text>
-            </TouchableOpacity>
+            <Text style={styles.cookName}>By {cook?.name || 'Unknown Cook'}</Text>
+            {cook?.id && (
+              <TouchableOpacity onPress={() => router.push(`/cook/${cook.id}`)}>
+                <Text style={styles.viewProfile}>View Profile</Text>
+              </TouchableOpacity>
+            )}
           </View>
           
-          {user?.id !== selectedMeal.cookId && (
+          {user?.id !== selectedMeal.cookId && cook && (
             <Button
               title="Contact"
               onPress={handleContactCook}
@@ -253,11 +231,11 @@ export default function MealDetailScreen() {
           <Text style={styles.description}>{selectedMeal.description}</Text>
         </View>
         
-        {selectedMeal.ingredients && (
+        {selectedMeal.ingredients && selectedMeal.ingredients.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Ingredients</Text>
             <View style={styles.tagsContainer}>
-              {selectedMeal.ingredients.map((ingredient, index) => (
+              {(selectedMeal.ingredients || []).map((ingredient, index) => (
                 <View key={index} style={styles.tag}>
                   <Text style={styles.tagText}>{ingredient}</Text>
                 </View>
@@ -266,11 +244,11 @@ export default function MealDetailScreen() {
           </View>
         )}
         
-        {selectedMeal.allergens && (
+        {selectedMeal.allergens && selectedMeal.allergens.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Allergens</Text>
             <View style={styles.tagsContainer}>
-              {selectedMeal.allergens.map((allergen, index) => (
+              {(selectedMeal.allergens || []).map((allergen, index) => (
                 <View key={index} style={[styles.tag, styles.allergenTag]}>
                   <Text style={styles.tagText}>{allergen}</Text>
                 </View>
@@ -282,7 +260,7 @@ export default function MealDetailScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Pickup Times</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {selectedMeal.pickupTimes.map((time, index) => (
+            {(selectedMeal.pickupTimes || []).map((time, index) => (
               <TouchableOpacity
                 key={index}
                 style={[
@@ -309,19 +287,54 @@ export default function MealDetailScreen() {
           </ScrollView>
         </View>
         
-        {mealReviews.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Reviews</Text>
-            {mealReviews.map(review => (
-              <ReviewCard
-                key={review.id}
-                review={review}
-                customerName={getCustomerName(review.customerId)}
-                customerAvatar={getCustomerAvatar(review.customerId)}
-              />
-            ))}
-          </View>
-        )}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Reviews</Text>
+          {(mealReviews || []).length > 0 ? (
+            <View style={styles.reviewsContainer}>
+              {(mealReviews || []).map(reservation => (
+                <View key={reservation.id} style={styles.reviewCard}>
+                  <View style={styles.reviewHeader}>
+                    <View style={styles.reviewerInfo}>
+                      <Text style={styles.reviewerName}>
+                        {reservation.rating!.customerName}
+                      </Text>
+                      <View style={styles.ratingStars}>
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <Star
+                            key={star}
+                            size={14}
+                            color={star <= reservation.rating!.mealRating ? Colors.rating : Colors.border}
+                            fill={star <= reservation.rating!.mealRating ? Colors.rating : 'transparent'}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                    <Text style={styles.reviewDate}>
+                      {new Date(reservation.rating!.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </Text>
+                  </View>
+                  
+                  {reservation.rating!.reviewText && reservation.rating!.reviewText.trim() !== '' && (
+                    <Text style={styles.reviewComment}>
+                      {reservation.rating!.reviewText}
+                    </Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.noReviewsContainer}>
+              <Text style={styles.noReviewsText}>No reviews yet</Text>
+              <Text style={styles.noReviewsSubtext}>
+                Be the first to order and leave a review!
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
       </ScrollView>
       
@@ -348,7 +361,7 @@ export default function MealDetailScreen() {
           </View>
           
           <Button
-            title={`Reserve • $${(selectedMeal.price * quantity).toFixed(2)}`}
+            title={`Reserve Meal • $${(selectedMeal.price * quantity).toFixed(2)}`}
             onPress={handleReserve}
             style={styles.reserveButton}
             fullWidth
@@ -556,5 +569,66 @@ const styles = StyleSheet.create({
   },
   reserveButton: {
     flex: 1,
+  },
+  reviewsContainer: {
+    gap: 16,
+  },
+  reviewCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  reviewerInfo: {
+    flex: 1,
+  },
+  reviewerName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 6,
+  },
+  ratingStars: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  reviewDate: {
+    fontSize: 12,
+    color: Colors.subtext,
+    fontWeight: '500',
+  },
+  reviewComment: {
+    fontSize: 15,
+    color: Colors.text,
+    lineHeight: 22,
+    fontStyle: 'italic',
+  },
+  noReviewsContainer: {
+    alignItems: 'center',
+    padding: 32,
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+  },
+  noReviewsText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.subtext,
+    marginBottom: 8,
+  },
+  noReviewsSubtext: {
+    fontSize: 14,
+    color: Colors.subtext,
+    textAlign: 'center',
+    opacity: 0.8,
   },
 });

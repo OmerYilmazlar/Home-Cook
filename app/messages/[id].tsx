@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, View, Text, TextInput, FlatList, KeyboardAvoidingView, Platform, TouchableOpacity, Dimensions, Keyboard } from 'react-native';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { StyleSheet, View, TextInput, FlatList, KeyboardAvoidingView, Platform, TouchableOpacity, Keyboard } from 'react-native';
+import { useLocalSearchParams, Stack } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Send } from 'lucide-react-native';
 import { useAuthStore } from '@/store/auth-store';
@@ -11,13 +11,13 @@ import { mockCooks, mockCustomers } from '@/mocks/users';
 
 export default function MessageScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
+
   
   const { user } = useAuthStore();
   const { currentConversation, messages, fetchMessages, sendMessage, markAsRead, initializeMessages } = useMessagingStore();
   
   const [messageText, setMessageText] = useState('');
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
   const flatListRef = useRef<FlatList>(null);
   
   useEffect(() => {
@@ -27,8 +27,7 @@ export default function MessageScreen() {
     // Keyboard listeners
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => {
-        setKeyboardHeight(e.endCoordinates.height);
+      () => {
         // Scroll to bottom when keyboard shows
         setTimeout(() => {
           flatListRef.current?.scrollToEnd({ animated: true });
@@ -39,7 +38,7 @@ export default function MessageScreen() {
     const keyboardWillHide = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       () => {
-        setKeyboardHeight(0);
+        // Keyboard hidden
       }
     );
     
@@ -89,18 +88,22 @@ export default function MessageScreen() {
   const handleSend = async () => {
     if (!messageText.trim() || !user || !otherUser) return;
     
-    await sendMessage({
-      senderId: user.id,
-      receiverId: otherUser.id,
-      content: messageText.trim(),
-    });
-    
-    setMessageText('');
-    
-    // Scroll to bottom after sending
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    try {
+      await sendMessage({
+        senderId: user.id,
+        receiverId: otherUser.id,
+        content: messageText.trim(),
+      });
+      
+      setMessageText('');
+      
+      // Scroll to bottom after sending
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
   };
   
   const renderMessage = ({ item }: { item: any }) => (
@@ -110,10 +113,7 @@ export default function MessageScreen() {
     />
   );
   
-  const screenHeight = Dimensions.get('window').height;
-  const inputBottomOffset = Platform.OS === 'ios' ? 34 : 20; // Safe area bottom
-  const inputContainerHeight = 80 + inputBottomOffset; // Approximate input container height
-  const additionalKeyboardOffset = 20; // Extra space above keyboard
+  const inputContainerHeight = 80; // Approximate input container height
 
   return (
     <View style={styles.container}>
@@ -131,7 +131,7 @@ export default function MessageScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={[
             styles.messagesContainer,
-            { paddingBottom: inputContainerHeight + keyboardHeight + 40 }
+            { paddingBottom: inputContainerHeight + 20 }
           ]}
           style={styles.messagesList}
           onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
@@ -147,14 +147,9 @@ export default function MessageScreen() {
       
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 20}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <View style={[
-          styles.inputContainer,
-          keyboardHeight > 0 && { 
-            marginBottom: Platform.OS === 'android' ? keyboardHeight + additionalKeyboardOffset : additionalKeyboardOffset 
-          }
-        ]}>
+        <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
             <TextInput
               style={styles.input}

@@ -134,7 +134,10 @@ export default function OrdersScreen() {
     />
   );
   
-  if (displayReservations.length === 0 && !isLoading) {
+  // Only show empty state if there are no reservations at all (both upcoming and past)
+  const hasNoReservationsAtAll = upcomingReservations.length === 0 && pastReservations.length === 0;
+  
+  if (hasNoReservationsAtAll && !isLoading) {
     return (
       <EmptyState
         title={isCook ? "No Orders Yet" : "No Orders Yet"}
@@ -185,12 +188,26 @@ export default function OrdersScreen() {
         </TouchableOpacity>
       </View>
       
-      <FlatList
-        data={displayReservations}
-        renderItem={renderReservationItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
-      />
+      {displayReservations.length === 0 ? (
+        <View style={styles.emptyTabContainer}>
+          <Text style={styles.emptyTabText}>
+            {activeTab === 'upcoming' ? 'No upcoming orders' : 'No past orders'}
+          </Text>
+          <Text style={styles.emptyTabSubtext}>
+            {activeTab === 'upcoming' 
+              ? 'Your upcoming orders will appear here'
+              : 'Your completed and cancelled orders will appear here'
+            }
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={displayReservations}
+          renderItem={renderReservationItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContainer}
+        />
+      )}
     </View>
   );
 }
@@ -236,5 +253,25 @@ const styles = StyleSheet.create({
   listContainer: {
     padding: 20,
     paddingBottom: 40,
+  },
+  emptyTabContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingTop: 60,
+  },
+  emptyTabText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptyTabSubtext: {
+    fontSize: 14,
+    color: Colors.subtext,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

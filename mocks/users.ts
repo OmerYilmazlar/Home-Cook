@@ -1,4 +1,4 @@
-import { Cook } from '@/types';
+import { Cook, Customer } from '@/types';
 
 export const mockCooks: Cook[] = [
   {
@@ -51,5 +51,47 @@ export const mockCooks: Cook[] = [
     reviewCount: 156,
     cuisineTypes: ['American', 'Comfort Food'],
     availableForPickup: true
+  }
+];
+
+export const mockCustomers: Customer[] = [
+  {
+    id: 'customer-1',
+    name: 'John Smith',
+    email: 'john@example.com',
+    userType: 'customer',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+    location: {
+      latitude: 37.7849,
+      longitude: -122.4194,
+      address: 'SOMA, San Francisco'
+    },
+    favorites: []
+  },
+  {
+    id: 'customer-2',
+    name: 'Emily Davis',
+    email: 'emily@example.com',
+    userType: 'customer',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
+    location: {
+      latitude: 37.7749,
+      longitude: -122.4094,
+      address: 'Marina District, San Francisco'
+    },
+    favorites: []
+  },
+  {
+    id: 'customer-3',
+    name: 'Michael Johnson',
+    email: 'michael@example.com',
+    userType: 'customer',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
+    location: {
+      latitude: 37.7649,
+      longitude: -122.4394,
+      address: 'Richmond District, San Francisco'
+    },
+    favorites: []
   }
 ];

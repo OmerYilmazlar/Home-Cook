@@ -102,7 +102,7 @@ export default function ProfileScreen() {
                 </View>
               )}
               
-              {user.location?.address && (
+              {isCook && user.location?.address && (
                 <View style={styles.locationContainer}>
                   <MapPin size={16} color={Colors.white} />
                   <Text style={styles.location} numberOfLines={1}>

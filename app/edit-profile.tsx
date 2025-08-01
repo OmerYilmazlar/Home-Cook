@@ -95,7 +95,7 @@ export default function EditProfileScreen() {
       newErrors.phone = 'Please enter a valid 10-digit phone number';
     }
     
-    if (address && !addressValid) {
+    if (isCook && address && !addressValid) {
       newErrors.address = 'Please enter a complete address (e.g., "123 Main St, City, State")';
     }
     
@@ -137,11 +137,15 @@ export default function EditProfileScreen() {
         email,
         phone,
         avatar,
-        location: {
+      };
+      
+      // Only include address for cooks
+      if (isCook) {
+        profileData.location = {
           ...user?.location,
           address,
-        },
-      };
+        };
+      }
       
       if (isCook) {
         profileData.bio = bio;
@@ -224,44 +228,46 @@ export default function EditProfileScreen() {
           )}
         </View>
         
-        <View style={styles.inputWithValidation}>
-          <Input
-            label="Address"
-            placeholder="123 Main St, City, State ZIP"
-            value={address}
-            onChangeText={handleAddressChange}
-            leftIcon={<MapPin size={20} color={Colors.subtext} />}
-            error={errors.address}
-            containerStyle={address && addressValid ? styles.inputWithSuccessValidation : undefined}
-            rightIcon={
-              address ? (
-                addressValid ? (
-                  <CheckCircle size={20} color={Colors.success} />
-                ) : (
-                  <XCircle size={20} color={Colors.error} />
-                )
-              ) : null
-            }
-          />
-          {address && addressValid && (
-            <Text style={styles.validationSuccess}>✓ Valid address format</Text>
-          )}
-          
-          {showAddressSuggestions && (
-            <View style={styles.suggestionsContainer}>
-              {addressSuggestions.map((suggestion, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.suggestionItem}
-                  onPress={() => selectAddressSuggestion(suggestion)}
-                >
-                  <MapPin size={16} color={Colors.subtext} />
-                  <Text style={styles.suggestionText}>{suggestion}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
+        {isCook && (
+          <View style={styles.inputWithValidation}>
+            <Input
+              label="Address"
+              placeholder="123 Main St, City, State ZIP"
+              value={address}
+              onChangeText={handleAddressChange}
+              leftIcon={<MapPin size={20} color={Colors.subtext} />}
+              error={errors.address}
+              containerStyle={address && addressValid ? styles.inputWithSuccessValidation : undefined}
+              rightIcon={
+                address ? (
+                  addressValid ? (
+                    <CheckCircle size={20} color={Colors.success} />
+                  ) : (
+                    <XCircle size={20} color={Colors.error} />
+                  )
+                ) : null
+              }
+            />
+            {address && addressValid && (
+              <Text style={styles.validationSuccess}>✓ Valid address format</Text>
+            )}
+            
+            {showAddressSuggestions && (
+              <View style={styles.suggestionsContainer}>
+                {addressSuggestions.map((suggestion, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.suggestionItem}
+                    onPress={() => selectAddressSuggestion(suggestion)}
+                  >
+                    <MapPin size={16} color={Colors.subtext} />
+                    <Text style={styles.suggestionText}>{suggestion}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
         
         {isCook && (
           <View style={styles.bioInputContainer}>

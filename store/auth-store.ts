@@ -52,8 +52,6 @@ interface AuthState {
   updateProfile: (userData: Partial<User>) => Promise<void>;
   addCuisineType: (cuisineType: string) => void;
   initialize: () => void;
-  switchToTestCook: () => void;
-  switchToTestCustomer: () => void;
 }
 
 export const useAuthStore = create<AuthState>()((set, get) => ({
@@ -145,22 +143,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         console.log('Auth store initialized without auto-login');
       },
       
-      switchToTestCook: () => {
-        const testCook = tempMockUsers.find(u => u.id === '1' && u.userType === 'cook'); // Maria Garcia
-        if (testCook) {
-          set({ user: testCook, isAuthenticated: true });
-          console.log('Switched to test cook:', testCook.name);
-        }
-      },
-      
-      switchToTestCustomer: () => {
-        const testCustomer = tempMockUsers.find(u => u.id === '101' && u.userType === 'customer'); // Alex Johnson
-        if (testCustomer) {
-          set({ user: testCustomer, isAuthenticated: true });
-          console.log('Switched to test customer:', testCustomer.name);
-        }
-      },
-      
+
       updateProfile: async (userData) => {
         set({ isLoading: true, error: null });
         

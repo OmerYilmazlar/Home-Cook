@@ -11,7 +11,7 @@ import { mockCooks, mockCustomers } from '@/mocks/users';
 
 export default function OrdersScreen() {
   const router = useRouter();
-  const { user, switchToTestCook, switchToTestCustomer } = useAuthStore();
+  const { user } = useAuthStore();
   const { meals, fetchMeals } = useMealsStore();
   const { 
     customerReservations, 
@@ -151,34 +151,7 @@ export default function OrdersScreen() {
   
   return (
     <View style={styles.container}>
-      {/* Temporary testing buttons */}
-      <View style={styles.testingContainer}>
-        <TouchableOpacity 
-          style={[styles.testButton, user?.userType === 'customer' && styles.activeTestButton]}
-          onPress={switchToTestCustomer}
-        >
-          <Text style={styles.testButtonText}>Test as Customer</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.testButton, user?.userType === 'cook' && styles.activeTestButton]}
-          onPress={switchToTestCook}
-        >
-          <Text style={styles.testButtonText}>Test as Cook</Text>
-        </TouchableOpacity>
-      </View>
-      
-      {/* Payment System Demo Button */}
-      {user?.userType === 'customer' && (
-        <View style={styles.demoContainer}>
-          <TouchableOpacity 
-            style={styles.demoButton}
-            onPress={() => router.push('/meal/1')}
-          >
-            <Text style={styles.demoButtonText}>💳 Test Payment System - Reserve Enchiladas</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-      
+
       <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[
@@ -226,44 +199,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  testingContainer: {
-    flexDirection: 'row',
-    padding: 10,
-    backgroundColor: Colors.card,
-    gap: 10,
-  },
-  testButton: {
-    flex: 1,
-    padding: 8,
-    backgroundColor: Colors.white,
-    borderRadius: 6,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-  },
-  activeTestButton: {
-    backgroundColor: Colors.primary,
-  },
-  testButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  demoContainer: {
-    padding: 10,
-    backgroundColor: Colors.cardSecondary,
-  },
-  demoButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-  },
-  demoButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.white,
-  },
+
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: Colors.white,

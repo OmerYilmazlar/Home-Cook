@@ -13,9 +13,9 @@ const tempMockUsers: (Cook | Customer)[] = [
     userType: 'cook',
     bio: 'Authentic Mexican cuisine made with love and traditional recipes passed down through generations.',
     location: {
-      address: 'Mission District, San Francisco',
-      latitude: 37.7749,
-      longitude: -122.4194
+      address: 'Edmonton, London N9 0AS, UK',
+      latitude: 51.6127,
+      longitude: -0.0623
     },
     rating: 0, // Reset to 0 reviews
     reviewCount: 0,
@@ -33,9 +33,9 @@ const tempMockUsers: (Cook | Customer)[] = [
     userType: 'customer',
     bio: 'Food enthusiast who loves discovering authentic homemade dishes from local cooks.',
     location: {
-      address: 'SOMA, San Francisco',
-      latitude: 37.7849,
-      longitude: -122.4194
+      address: 'Enfield, London EN1 3AA, UK',
+      latitude: 51.6523,
+      longitude: -0.0810
     },
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
     phone: '+1-555-0124',

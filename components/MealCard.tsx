@@ -52,10 +52,18 @@ export default function MealCard({ meal, compact = false, onPress, showCookInfo 
             <Text style={styles.cuisine}>{meal.cuisineType}</Text>
           </View>
           
-          <View style={styles.timeContainer}>
-            <Clock size={12} color={Colors.subtext} />
-            <Text style={styles.timeText}>30-45 min</Text>
-          </View>
+          {meal.pickupTimes && meal.pickupTimes.length > 0 && (
+            <View style={styles.timeContainer}>
+              <Clock size={12} color={Colors.subtext} />
+              <Text style={styles.timeText}>
+                {new Date(meal.pickupTimes[0].from).toLocaleTimeString('en-US', { 
+                  hour: 'numeric', 
+                  minute: '2-digit',
+                  hour12: true 
+                })}
+              </Text>
+            </View>
+          )}
         </View>
         
         {!compact && (

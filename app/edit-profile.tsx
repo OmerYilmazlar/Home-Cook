@@ -264,16 +264,18 @@ export default function EditProfileScreen() {
         </View>
         
         {isCook && (
-          <Input
-            label="Bio"
-            placeholder="Tell customers about yourself and your cooking"
-            value={bio}
-            onChangeText={setBio}
-            multiline
-            numberOfLines={4}
-            style={styles.textArea}
-            error={errors.bio}
-          />
+          <View style={styles.bioInputContainer}>
+            <Input
+              label="Bio"
+              placeholder="Tell customers about yourself and your cooking"
+              value={bio}
+              onChangeText={setBio}
+              multiline
+              numberOfLines={4}
+              style={styles.textArea}
+              error={errors.bio}
+            />
+          </View>
         )}
         
         <Button
@@ -342,6 +344,7 @@ const styles = StyleSheet.create({
   textArea: {
     height: 100,
     textAlignVertical: 'top',
+    width: '100%',
   },
 
 
@@ -364,9 +367,13 @@ const styles = StyleSheet.create({
   validationSuccess: {
     fontSize: 12,
     color: Colors.success,
-    marginTop: 4,
-    marginLeft: 4,
-    marginBottom: 12,
+    marginTop: 2,
+    marginLeft: 0,
+    marginBottom: 8,
+  },
+  bioInputContainer: {
+    width: '100%',
+    marginBottom: 16,
   },
   suggestionsContainer: {
     backgroundColor: Colors.white,

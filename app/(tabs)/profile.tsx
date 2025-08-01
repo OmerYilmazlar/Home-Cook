@@ -86,11 +86,19 @@ export default function ProfileScreen() {
                 </Text>
               </View>
               
-              {user?.rating && user?.reviewCount !== undefined && (
+              {user?.rating && user?.reviewCount !== undefined && user.reviewCount > 0 && (
                 <View style={styles.ratingContainer}>
                   <Star size={16} color={Colors.rating} fill={Colors.rating} />
                   <Text style={styles.rating}>
-                    {user.rating.toFixed(1)} ({user.reviewCount || 0} reviews)
+                    {user.rating.toFixed(1)} ({user.reviewCount} {user.reviewCount === 1 ? 'review' : 'reviews'})
+                  </Text>
+                </View>
+              )}
+              {(!user?.rating || !user?.reviewCount || user.reviewCount === 0) && (
+                <View style={styles.ratingContainer}>
+                  <Star size={16} color={Colors.rating} fill={Colors.rating} />
+                  <Text style={styles.rating}>
+                    0 reviews
                   </Text>
                 </View>
               )}

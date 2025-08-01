@@ -62,9 +62,9 @@ export default function LoginScreen() {
     let demoEmail = '';
     
     if (userType === 'cook') {
-      demoEmail = 'maria.garcia@email.com'; // Maria Garcia
+      demoEmail = 'maria@example.com'; // Maria Rodriguez
     } else {
-      demoEmail = 'alex.johnson@email.com'; // Alex Johnson
+      demoEmail = 'john@example.com'; // John Smith
     }
     
     try {

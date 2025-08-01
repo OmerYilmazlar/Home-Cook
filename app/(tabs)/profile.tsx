@@ -136,11 +136,16 @@ export default function ProfileScreen() {
         <View style={styles.cuisineContainer}>
           <Text style={styles.sectionTitle}>Cuisine Types</Text>
           <View style={styles.cuisineTagsContainer}>
-            {cookUser.cuisineTypes.map((cuisine: string, index: number) => (
-              <View key={index} style={styles.cuisineTag}>
-                <Text style={styles.cuisineText}>{cuisine || ''}</Text>
-              </View>
-            ))}
+            {cookUser.cuisineTypes.map((cuisine: string, index: number) => {
+              const cuisineText = cuisine?.trim() || '';
+              if (!cuisineText) return null;
+              
+              return (
+                <View key={index} style={styles.cuisineTag}>
+                  <Text style={styles.cuisineText}>{cuisineText}</Text>
+                </View>
+              );
+            })}
           </View>
         </View>
       )}

@@ -32,7 +32,7 @@ export default function WalletCard({ userId, showEarnings = false, onPress }: Wa
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>
-          {isCook ? '💰 Earnings Wallet' : '💳 Payment Wallet'}
+          {isCook ? 'Earnings Wallet' : 'Payment Wallet'}
         </Text>
         <Text style={styles.balance}>
           {formatCurrency(wallet.balance)}

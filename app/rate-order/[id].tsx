@@ -98,7 +98,10 @@ export default function RateOrderScreen() {
         [
           {
             text: 'OK',
-            onPress: () => router.back()
+            onPress: () => {
+              // Navigate back to orders with past tab selected
+              router.replace('/(tabs)/orders?tab=past');
+            }
           }
         ]
       );

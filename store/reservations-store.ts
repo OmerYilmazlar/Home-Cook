@@ -416,6 +416,30 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
         };
       });
       
+      // Auto-redirect to past section when customer completes order
+      if (status === 'completed') {
+        // Get current user to check if they're a customer
+        try {
+          const { useAuthStore } = await import('./auth-store');
+          const currentUser = useAuthStore.getState().user;
+          
+          if (currentUser?.userType === 'customer') {
+            // Import router dynamically to avoid circular dependencies
+            setTimeout(() => {
+              try {
+                const { router } = require('expo-router');
+                router.push('/(tabs)/orders?tab=past');
+                console.log('Redirected customer to past orders after completion');
+              } catch (error) {
+                console.error('Failed to redirect to past orders:', error);
+              }
+            }, 1000);
+          }
+        } catch (error) {
+          console.error('Failed to check user type for redirect:', error);
+        }
+      }
+      
       // Force refresh all reservation data to ensure sync across all users
       // This simulates real-time updates that would happen in a real app
       setTimeout(async () => {

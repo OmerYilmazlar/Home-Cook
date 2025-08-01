@@ -27,6 +27,7 @@ export default function HomeScreen() {
   
   const [refreshing, setRefreshing] = useState(false);
   const [cookMeals, setCookMeals] = useState<Meal[]>([]);
+  const [cooksWithUpdatedRatings, setCooksWithUpdatedRatings] = useState<Cook[]>([]);
   
   const isCook = user?.userType === 'cook';
   
@@ -38,6 +39,8 @@ export default function HomeScreen() {
     } else {
       // Fetch all meals for customers
       fetchMeals();
+      // Also fetch reservations to calculate cook ratings
+      fetchReservations();
     }
   }, [isCook, user?.id]);
   
@@ -48,6 +51,8 @@ export default function HomeScreen() {
         fetchMealsByCook(user.id).then(setCookMeals);
       } else {
         fetchMeals();
+        // Also refresh reservations to get updated ratings
+        fetchReservations();
       }
     }, [isCook, user?.id])
   );
@@ -60,6 +65,8 @@ export default function HomeScreen() {
       await fetchReservations();
     } else {
       await fetchMeals();
+      // Also refresh reservations to get updated ratings
+      await fetchReservations();
     }
     setRefreshing(false);
   };
@@ -99,7 +106,37 @@ export default function HomeScreen() {
   };
   
   const featuredMeals = isCook ? (cookMeals || []).slice(0, 4) : (meals || []).slice(0, 4);
-  const topCooks = (mockCooks || []).slice(0, 3) as Cook[];
+  // Use updated cooks if available, otherwise fall back to mockCooks
+  const topCooks = (cooksWithUpdatedRatings.length > 0 ? cooksWithUpdatedRatings : mockCooks || []).slice(0, 3) as Cook[];
+  
+  // Update cook ratings when component mounts or when reservations change
+  useEffect(() => {
+    const updateCookRatings = () => {
+      const updatedCooks = mockCooks.map(cook => {
+        // Calculate rating from all reservations for this cook
+        const cookReservations = reservations.filter(r => r.cookId === cook.id && r.rating?.cookRating);
+        
+        if (cookReservations.length === 0) {
+          return { ...cook, rating: 0, reviewCount: 0 };
+        }
+        
+        const totalRating = cookReservations.reduce((sum, r) => sum + (r.rating?.cookRating || 0), 0);
+        const averageRating = totalRating / cookReservations.length;
+        
+        return {
+          ...cook,
+          rating: Math.round(averageRating * 10) / 10,
+          reviewCount: cookReservations.length
+        };
+      });
+      
+      setCooksWithUpdatedRatings(updatedCooks);
+    };
+    
+    if (reservations.length > 0) {
+      updateCookRatings();
+    }
+  }, [reservations]);
   
   return (
     <ScrollView

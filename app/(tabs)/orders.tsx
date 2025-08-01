@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '@/store/auth-store';
 import { useReservationsStore } from '@/store/reservations-store';
 import { useMealsStore } from '@/store/meals-store';
@@ -23,7 +23,17 @@ export default function OrdersScreen() {
     isLoading 
   } = useReservationsStore();
   
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>(
+    tab === 'past' ? 'past' : 'upcoming'
+  );
+  
+  // Update active tab when tab parameter changes
+  useEffect(() => {
+    if (tab === 'past') {
+      setActiveTab('past');
+    }
+  }, [tab]);
   
   // Load meals when component mounts
   useEffect(() => {

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Platform, Alert } from 'react-native';
-import { MapPin, User } from 'lucide-react-native';
+import { MapPin, User, ChefHat, UtensilsCrossed } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import Colors from '@/constants/colors';
 import { mockCooks } from '@/mocks/users';
+import { useMealsStore } from '@/store/meals-store';
 
 interface MapViewProps {
   contentType: 'meals' | 'cooks';
@@ -22,6 +23,7 @@ export default function CustomMapView({ contentType }: MapViewProps) {
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const [locationPermission, setLocationPermission] = useState<boolean>(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState<boolean>(true);
+  const { filteredMeals } = useMealsStore();
 
   useEffect(() => {
     requestLocationPermission();
@@ -125,7 +127,9 @@ export default function CustomMapView({ contentType }: MapViewProps) {
           pinColor={Colors.secondary}
         >
           <View style={styles.customerMarker}>
-            <User size={16} color="white" />
+            <View style={styles.customerMarkerInner}>
+              <User size={12} color="white" />
+            </View>
           </View>
         </Marker>
       )}
@@ -144,7 +148,30 @@ export default function CustomMapView({ contentType }: MapViewProps) {
               description={cook.cuisineTypes?.join(', ') || 'Cook'}
             >
               <View style={styles.cookMarker}>
-                <MapPin size={16} color="white" />
+                <ChefHat size={16} color="white" />
+              </View>
+            </Marker>
+          );
+        }
+        return null;
+      })}
+
+      {/* Meal markers */}
+      {contentType === 'meals' && filteredMeals.map((meal) => {
+        const cook = mockCooks.find(c => c.id === meal.cookId);
+        if (cook?.location?.latitude && cook?.location?.longitude) {
+          return (
+            <Marker
+              key={meal.id}
+              coordinate={{
+                latitude: cook.location.latitude,
+                longitude: cook.location.longitude,
+              }}
+              title={meal.name}
+              description={`${meal.cuisineType} • £${meal.price} • by ${cook.name}`}
+            >
+              <View style={styles.mealMarker}>
+                <UtensilsCrossed size={16} color="white" />
               </View>
             </Marker>
           );
@@ -173,10 +200,36 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   customerMarker: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#4A90E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    elevation: 6,
+  },
+  customerMarkerInner: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#2E5BBA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cookMarker: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.secondary,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -190,11 +243,11 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  cookMarker: {
+  mealMarker: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.primary,
+    backgroundColor: '#FF6B35',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,

@@ -14,7 +14,7 @@ export default function MessageScreen() {
 
   
   const { user } = useAuthStore();
-  const { currentConversation, messages, fetchMessages, sendMessage, markAsRead, initializeMessages } = useMessagingStore();
+  const { currentConversation, messages, fetchMessages, sendMessage, markAsRead, initializeMessages, createConversation } = useMessagingStore();
   
   const [messageText, setMessageText] = useState('');
 
@@ -71,27 +71,55 @@ export default function MessageScreen() {
   }, [currentConversation, messages]);
   
   const getOtherUser = () => {
-    if (!currentConversation || !user) return null;
+    if (!user) return null;
     
-    const otherUserId = currentConversation.participants.find(
-      participantId => participantId !== user.id
-    );
+    // If we have a current conversation, find the other participant
+    if (currentConversation) {
+      const otherUserId = currentConversation.participants.find(
+        participantId => participantId !== user.id
+      );
+      
+      if (otherUserId) {
+        const allUsers = [...mockCooks, ...mockCustomers];
+        return allUsers.find(u => u.id === otherUserId);
+      }
+    }
     
-    if (!otherUserId) return null;
+    // If no conversation yet, use the id from params to find the user
+    if (id) {
+      const allUsers = [...mockCooks, ...mockCustomers];
+      return allUsers.find(u => u.id === id);
+    }
     
-    const allUsers = [...mockCooks, ...mockCustomers];
-    return allUsers.find(u => u.id === otherUserId);
+    return null;
   };
   
   const otherUser = getOtherUser();
   
   const handleSend = async () => {
-    if (!messageText.trim() || !user || !otherUser) return;
+    if (!messageText.trim() || !user) return;
+    
+    console.log('Attempting to send message:', {
+      messageText: messageText.trim(),
+      user: user?.id,
+      otherUserId: id,
+      currentConversation: currentConversation?.id
+    });
     
     try {
+      // If no current conversation, create one
+      if (!currentConversation && id && user) {
+        console.log('Creating new conversation between:', user.id, 'and', id);
+        const conversationId = await createConversation([user.id, id]);
+        if (conversationId) {
+          await fetchMessages(conversationId);
+        }
+      }
+      
+      // Send the message
       await sendMessage({
         senderId: user.id,
-        receiverId: otherUser.id,
+        receiverId: id, // Use the id from params directly
         content: messageText.trim(),
       });
       

@@ -84,21 +84,33 @@ export const useMessagingStore = create<MessagingState>()(persist(
     }
   },
   
-  fetchMessages: async (conversationId: string) => {
+  fetchMessages: async (conversationIdOrUserId: string) => {
     set({ isLoading: true, error: null });
     
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      const conversation = mockConversations.find(c => c.id === conversationId);
+      const state = get();
       
+      // First try to find by conversation ID
+      let conversation = [...mockConversations, ...state.conversations].find(c => c.id === conversationIdOrUserId);
+      
+      // If not found, try to find by user ID (create conversation between current user and this user)
       if (!conversation) {
-        throw new Error('Conversation not found');
+        console.log('No conversation found, looking for existing conversation with user:', conversationIdOrUserId);
+        // This means we're looking for a conversation with a specific user
+        // We need to find or create a conversation between the current user and this user
+        // For now, we'll create an empty conversation and let the send message handle creation
+        set({ 
+          currentConversation: null,
+          messages: [],
+          isLoading: false 
+        });
+        return;
       }
       
       // Filter messages from global store based on participants
-      const state = get();
       const conversationMessages = state.allMessages.filter(message => 
         conversation.participants.includes(message.senderId) && 
         conversation.participants.includes(message.receiverId)
@@ -233,29 +245,40 @@ export const useMessagingStore = create<MessagingState>()(persist(
     
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Check if conversation already exists
-      const existingConversation = get().conversations.find(
+      const state = get();
+      
+      // Check if conversation already exists in both mock and state
+      const allConversations = [...mockConversations, ...state.conversations];
+      const existingConversation = allConversations.find(
         conversation => 
           participants.every(p => conversation.participants.includes(p)) &&
           conversation.participants.length === participants.length
       );
       
       if (existingConversation) {
-        set({ isLoading: false });
+        console.log('Found existing conversation:', existingConversation.id);
+        set({ 
+          currentConversation: existingConversation,
+          isLoading: false 
+        });
         return existingConversation.id;
       }
       
       // Create new conversation
       const newConversation: Conversation = {
-        id: `new-${Date.now()}`,
+        id: `conv-${Date.now()}`,
         participants,
         unreadCount: 0,
       };
       
+      console.log('Created new conversation:', newConversation.id);
+      
       set(state => ({
         conversations: [...state.conversations, newConversation],
+        currentConversation: newConversation,
+        messages: [],
         isLoading: false,
       }));
       

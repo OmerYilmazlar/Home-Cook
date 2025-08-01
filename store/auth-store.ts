@@ -51,6 +51,7 @@ interface AuthState {
   logout: () => void;
   updateProfile: (userData: Partial<User>) => Promise<void>;
   addCuisineType: (cuisineType: string) => void;
+  updateUserRating: (userId: string, newRating: number) => void;
   initialize: () => void;
 }
 
@@ -182,5 +183,48 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           };
           set({ user: updatedUser });
         }
+      },
+      
+      updateUserRating: (userId: string, newRating: number) => {
+        // Find the user to update in tempMockUsers
+        const userIndex = tempMockUsers.findIndex(u => u.id === userId);
+        if (userIndex === -1) {
+          console.error('User not found for rating update:', userId);
+          return;
+        }
+        
+        const userToUpdate = tempMockUsers[userIndex];
+        
+        // Calculate new average rating
+        const currentRating = userToUpdate.rating || 0;
+        const currentReviewCount = userToUpdate.reviewCount || 0;
+        const newReviewCount = currentReviewCount + 1;
+        
+        // Calculate weighted average
+        const totalRatingPoints = (currentRating * currentReviewCount) + newRating;
+        const newAverageRating = totalRatingPoints / newReviewCount;
+        
+        const updatedUser = {
+          ...userToUpdate,
+          rating: Math.round(newAverageRating * 10) / 10, // Round to 1 decimal place
+          reviewCount: newReviewCount
+        };
+        
+        // Update in tempMockUsers for persistence
+        tempMockUsers[userIndex] = updatedUser;
+        
+        // If this is the currently logged-in user, also update the current user state
+        const currentUser = get().user;
+        if (currentUser && currentUser.id === userId) {
+          set({ user: updatedUser });
+        }
+        
+        console.log('Updated user rating:', {
+          userId,
+          newRating,
+          newAverageRating: updatedUser.rating,
+          newReviewCount: updatedUser.reviewCount,
+          isCurrentUser: currentUser?.id === userId
+        });
       },
 }));

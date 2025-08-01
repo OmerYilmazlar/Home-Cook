@@ -500,10 +500,45 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
         
         // Update meal and cook ratings (this would typically be done on the backend)
         const { useMealsStore } = await import('./meals-store');
+        const { useAuthStore } = await import('./auth-store');
+        
         if (reservation.mealId) {
           // Update meal rating - this is a simplified approach
           // In a real app, you'd aggregate all ratings for the meal
           useMealsStore.getState().updateMealRating(reservation.mealId, rating.mealRating);
+        }
+        
+        // Update cook's rating and review count
+        if (reservation.cookId) {
+          useAuthStore.getState().updateUserRating(reservation.cookId, rating.cookRating);
+          
+          // Also update the cook in mockCooks if it exists
+          try {
+            const { mockCooks } = await import('@/mocks/users');
+            const cookIndex = mockCooks.findIndex(c => c.id === reservation.cookId);
+            if (cookIndex !== -1) {
+              const cook = mockCooks[cookIndex];
+              const currentRating = cook.rating || 0;
+              const currentReviewCount = cook.reviewCount || 0;
+              const newReviewCount = currentReviewCount + 1;
+              const totalRatingPoints = (currentRating * currentReviewCount) + rating.cookRating;
+              const newAverageRating = totalRatingPoints / newReviewCount;
+              
+              mockCooks[cookIndex] = {
+                ...cook,
+                rating: Math.round(newAverageRating * 10) / 10,
+                reviewCount: newReviewCount
+              };
+              
+              console.log('Updated cook in mockCooks:', {
+                cookId: reservation.cookId,
+                newRating: mockCooks[cookIndex].rating,
+                newReviewCount: mockCooks[cookIndex].reviewCount
+              });
+            }
+          } catch (error) {
+            console.error('Failed to update cook in mockCooks:', error);
+          }
         }
         
         console.log('Rating submitted successfully');

@@ -32,11 +32,6 @@ const tempMockUsers: (Cook | Customer)[] = [
     email: 'john@example.com',
     userType: 'customer',
     bio: 'Food enthusiast who loves discovering authentic homemade dishes from local cooks.',
-    location: {
-      address: 'Enfield, London EN1 3AA, UK',
-      latitude: 51.6523,
-      longitude: -0.0810
-    },
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
     phone: '+1-555-0124',
     favorites: []

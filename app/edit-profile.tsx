@@ -20,7 +20,7 @@ export default function EditProfileScreen() {
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
-  const [address, setAddress] = useState(isCook ? (user?.location?.address || '') : '');
+  const [address, setAddress] = useState(user?.location?.address || '');
   const [bio, setBio] = useState(user?.bio || '');
   const [avatar, setAvatar] = useState(user?.avatar || '');
 
@@ -99,6 +99,10 @@ export default function EditProfileScreen() {
       newErrors.address = 'Please enter a complete address (e.g., "123 Main St, City, State")';
     }
     
+    if (isCook && !address) {
+      newErrors.address = 'Address is required for cooks';
+    }
+    
     if (isCook && !bio) newErrors.bio = 'Bio is required for cooks';
 
     
@@ -140,7 +144,7 @@ export default function EditProfileScreen() {
       };
       
       // Only include address for cooks
-      if (isCook && address) {
+      if (isCook) {
         profileData.location = {
           ...user?.location,
           address,

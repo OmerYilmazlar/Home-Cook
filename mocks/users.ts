@@ -27,11 +27,6 @@ export const mockCustomers: Customer[] = [
     email: 'john@example.com',
     userType: 'customer',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-    location: {
-      latitude: 51.6523,
-      longitude: -0.0810,
-      address: 'Enfield, London EN1 3AA, UK'
-    },
     favorites: []
   }
 ];

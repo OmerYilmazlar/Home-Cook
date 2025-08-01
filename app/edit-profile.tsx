@@ -15,10 +15,12 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const { user, updateProfile, isLoading } = useAuthStore();
   
+  const isCook = user?.userType === 'cook';
+  
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
-  const [address, setAddress] = useState(user?.location?.address || '');
+  const [address, setAddress] = useState(isCook ? (user?.location?.address || '') : '');
   const [bio, setBio] = useState(user?.bio || '');
   const [avatar, setAvatar] = useState(user?.avatar || '');
 
@@ -29,14 +31,12 @@ export default function EditProfileScreen() {
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
   
-  const isCook = user?.userType === 'cook';
-  
   // Validate existing values on component mount
   useEffect(() => {
     if (phone) {
       setPhoneValid(validatePhoneNumber(phone));
     }
-    if (address) {
+    if (isCook && address) {
       setAddressValid(validateAddress(address));
     }
   }, []);
@@ -140,7 +140,7 @@ export default function EditProfileScreen() {
       };
       
       // Only include address for cooks
-      if (isCook) {
+      if (isCook && address) {
         profileData.location = {
           ...user?.location,
           address,

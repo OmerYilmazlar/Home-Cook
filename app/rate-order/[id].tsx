@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { ArrowLeft, Star } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useAuthStore } from '@/store/auth-store';
@@ -113,7 +113,9 @@ export default function RateOrderScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <>
+      <Stack.Screen options={{ title: 'Rate Order' }} />
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ArrowLeft size={24} color={Colors.text} />
@@ -183,7 +185,8 @@ export default function RateOrderScreen() {
           Your rating helps other customers and supports our home cooks!
         </Text>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </>
   );
 }
 

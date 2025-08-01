@@ -163,17 +163,19 @@ export default function ExploreScreen() {
                 longitudeDelta: 0.05,
               }}
             >
-              {mockCooks.map((cook) => (
-                <Marker
-                  key={cook.id}
-                  coordinate={{
-                    latitude: cook.location.latitude,
-                    longitude: cook.location.longitude,
-                  }}
-                  title={cook.name}
-                  description={cook.bio}
-                />
-              ))}
+              {mockCooks.map((cook) => 
+                cook.location ? (
+                  <Marker
+                    key={cook.id}
+                    coordinate={{
+                      latitude: cook.location.latitude,
+                      longitude: cook.location.longitude,
+                    }}
+                    title={cook.name}
+                    description={cook.bio}
+                  />
+                ) : null
+              )}
             </MapView>
           )}
         </View>

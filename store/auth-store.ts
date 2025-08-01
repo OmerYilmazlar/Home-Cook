@@ -1,10 +1,10 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User, UserType } from '@/types';
+import { User, UserType, Cook, Customer } from '@/types';
 
 // Temporary inline mock data to fix the import issue
-const tempMockUsers: User[] = [
+const tempMockUsers: (Cook | Customer)[] = [
   // Cook - Maria Rodriguez (only one cook now)
   {
     id: 'cook-1',
@@ -23,7 +23,7 @@ const tempMockUsers: User[] = [
     phone: '+1-555-0123',
     cuisineTypes: ['Mexican', 'Latin American'],
     availableForPickup: true
-  },
+  } as Cook,
   
   // Customer - John Smith (only one customer now)
   {
@@ -40,11 +40,11 @@ const tempMockUsers: User[] = [
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
     phone: '+1-555-0124',
     favorites: []
-  }
+  } as Customer
 ];
 
 interface AuthState {
-  user: User | null;
+  user: Cook | Customer | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   isInitialized: boolean;
@@ -176,11 +176,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           return;
         }
         
-        const cookUser = currentUser as any;
+        const cookUser = currentUser as Cook;
         const existingCuisines = cookUser.cuisineTypes || [];
         
         if (!existingCuisines.includes(cuisineType)) {
-          const updatedUser = {
+          const updatedUser: Cook = {
             ...cookUser,
             cuisineTypes: [...existingCuisines, cuisineType]
           };

@@ -8,9 +8,9 @@ export const mockCooks: Cook[] = [
     userType: 'cook',
     avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
     location: {
-      latitude: 37.7749,
-      longitude: -122.4194,
-      address: 'Mission District, San Francisco'
+      latitude: 51.6127,
+      longitude: -0.0623,
+      address: 'Edmonton, London N9 0AS, UK'
     },
     bio: 'Authentic Mexican cuisine made with love and traditional recipes passed down through generations.',
     rating: 0,
@@ -28,9 +28,9 @@ export const mockCustomers: Customer[] = [
     userType: 'customer',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
     location: {
-      latitude: 37.7849,
-      longitude: -122.4194,
-      address: 'SOMA, San Francisco'
+      latitude: 51.6523,
+      longitude: -0.0810,
+      address: 'Enfield, London EN1 3AA, UK'
     },
     favorites: []
   }

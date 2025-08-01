@@ -5,38 +5,41 @@ import { User, UserType } from '@/types';
 
 // Temporary inline mock data to fix the import issue
 const tempMockUsers: User[] = [
-  // Cook - Maria Garcia
+  // Cook - Maria Rodriguez (only one cook now)
   {
-    id: '1',
-    name: 'Maria Garcia',
-    email: 'maria.garcia@email.com',
+    id: 'cook-1',
+    name: 'Maria Rodriguez',
+    email: 'maria@example.com',
     userType: 'cook',
-    bio: 'Passionate home cook specializing in authentic Mexican cuisine. I love sharing traditional family recipes passed down through generations.',
+    bio: 'Authentic Mexican cuisine made with love and traditional recipes passed down through generations.',
     location: {
-      address: '123 Mission Street, San Francisco, CA',
+      address: 'Mission District, San Francisco',
       latitude: 37.7749,
       longitude: -122.4194
     },
-    rating: 0, // New cook, no ratings yet
+    rating: 0, // Reset to 0 reviews
     reviewCount: 0,
-    avatar: 'https://images.unsplash.com/photo-1494790108755-2616b332c1c2?w=200&h=200&fit=crop&crop=face',
-    phone: '+1-555-0123'
+    avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+    phone: '+1-555-0123',
+    cuisineTypes: ['Mexican', 'Latin American'],
+    availableForPickup: true
   },
   
-  // Customer - Alex Johnson
+  // Customer - John Smith (only one customer now)
   {
-    id: '101',
-    name: 'Alex Johnson',
-    email: 'alex.johnson@email.com',
+    id: 'customer-1',
+    name: 'John Smith',
+    email: 'john@example.com',
     userType: 'customer',
     bio: 'Food enthusiast who loves discovering authentic homemade dishes from local cooks.',
     location: {
-      address: '456 Castro Street, San Francisco, CA',
-      latitude: 37.7620,
-      longitude: -122.4349
+      address: 'SOMA, San Francisco',
+      latitude: 37.7849,
+      longitude: -122.4194
     },
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
-    phone: '+1-555-0124'
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+    phone: '+1-555-0124',
+    favorites: []
   }
 ];
 

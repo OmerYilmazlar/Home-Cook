@@ -8,7 +8,7 @@ import Colors from '@/constants/colors';
 import ReservationCard from '@/components/ReservationCard';
 import EmptyState from '@/components/EmptyState';
 import { mockCooks, mockCustomers } from '@/mocks/users';
-import { Customer } from '@/types';
+
 
 export default function OrdersScreen() {
   const router = useRouter();
@@ -104,7 +104,7 @@ export default function OrdersScreen() {
   };
   
   const getCustomerName = (customerId: string) => {
-    const customer = mockCustomers.find((c: Customer) => c.id === customerId);
+    const customer = mockCustomers.find((c) => c.id === customerId);
     return customer?.name || 'Unknown Customer';
   };
   

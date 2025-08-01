@@ -534,9 +534,10 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
         
         // Update cook's rating and review count
         if (reservation.cookId) {
+          // Update in auth store (this will update the logged-in user if it's the cook)
           useAuthStore.getState().updateUserRating(reservation.cookId, rating.cookRating);
           
-          // Also update the cook in mockCooks if it exists
+          // Also update the cook in mockCooks for consistency
           try {
             const { mockCooks } = await import('@/mocks/users');
             const cookIndex = mockCooks.findIndex(c => c.id === reservation.cookId);
@@ -548,6 +549,7 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
               const totalRatingPoints = (currentRating * currentReviewCount) + rating.cookRating;
               const newAverageRating = totalRatingPoints / newReviewCount;
               
+              // Update the mock cook data
               mockCooks[cookIndex] = {
                 ...cook,
                 rating: Math.round(newAverageRating * 10) / 10,
@@ -559,6 +561,19 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
                 newRating: mockCooks[cookIndex].rating,
                 newReviewCount: mockCooks[cookIndex].reviewCount
               });
+              
+              // Force refresh the current user if they are the cook being rated
+              const currentUser = useAuthStore.getState().user;
+              if (currentUser && currentUser.id === reservation.cookId) {
+                // Update the current user with the new rating
+                const updatedUser = {
+                  ...currentUser,
+                  rating: mockCooks[cookIndex].rating,
+                  reviewCount: mockCooks[cookIndex].reviewCount
+                };
+                useAuthStore.setState({ user: updatedUser });
+                console.log('Updated current user rating in auth store:', updatedUser);
+              }
             }
           } catch (error) {
             console.error('Failed to update cook in mockCooks:', error);

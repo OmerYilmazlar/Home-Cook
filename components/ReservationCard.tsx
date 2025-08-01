@@ -200,7 +200,7 @@ export default function ReservationCard({
             </Text>
           </View>
           {reservation.rating.reviewText && (
-            <Text style={styles.reviewText}>"{reservation.rating.reviewText}"</Text>
+            <Text style={styles.reviewText}>&quot;{reservation.rating.reviewText}&quot;</Text>
           )}
         </View>
       )}

@@ -60,7 +60,7 @@ export default function CustomMapView({ contentType }: MapViewProps) {
                 longitude: cook.location.longitude,
               }}
               title={cook.name}
-              description={cook.specialties?.join(', ') || 'Cook'}
+              description={cook.cuisineTypes?.join(', ') || 'Cook'}
             />
           );
         }

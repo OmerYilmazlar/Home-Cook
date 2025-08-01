@@ -25,37 +25,54 @@ export default function CustomMapView({ contentType }: MapViewProps) {
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const [locationPermission, setLocationPermission] = useState<boolean>(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState<boolean>(true);
+  const [mapRegion, setMapRegion] = useState<any>(null);
   const { filteredMeals } = useMealsStore();
 
+  // Set initial region when component mounts
   useEffect(() => {
-    requestLocationPermission();
+    if (!mapRegion) {
+      // Set default region initially
+      const defaultRegion = {
+        latitude: 51.6194,
+        longitude: -0.1270,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+      };
+      setMapRegion(defaultRegion);
+    }
+  }, [mapRegion]);
+
+  useEffect(() => {
+    const requestPermission = async () => {
+      try {
+        if (Platform.OS === 'web') {
+          setIsLoadingLocation(false);
+          return;
+        }
+
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(
+            'Location Permission',
+            'Permission to access location was denied. You can still view cooks on the map, but your location won\'t be shown.',
+            [{ text: 'OK' }]
+          );
+          setIsLoadingLocation(false);
+          return;
+        }
+
+        setLocationPermission(true);
+        getCurrentLocation();
+      } catch (error) {
+        console.error('Error requesting location permission:', error);
+        setIsLoadingLocation(false);
+      }
+    };
+
+    requestPermission();
   }, []);
 
-  const requestLocationPermission = async () => {
-    try {
-      if (Platform.OS === 'web') {
-        setIsLoadingLocation(false);
-        return;
-      }
 
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          'Location Permission',
-          'Permission to access location was denied. You can still view cooks on the map, but your location won\'t be shown.',
-          [{ text: 'OK' }]
-        );
-        setIsLoadingLocation(false);
-        return;
-      }
-
-      setLocationPermission(true);
-      getCurrentLocation();
-    } catch (error) {
-      console.error('Error requesting location permission:', error);
-      setIsLoadingLocation(false);
-    }
-  };
 
   const getCurrentLocation = async () => {
     try {
@@ -63,9 +80,27 @@ export default function CustomMapView({ contentType }: MapViewProps) {
         accuracy: Location.Accuracy.Balanced,
       });
       setUserLocation(location);
+      
+      // Center the map on user's location
+      const region = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+      };
+      setMapRegion(region);
+      
       setIsLoadingLocation(false);
     } catch (error) {
       console.error('Error getting current location:', error);
+      // Set default region if location fails
+      const defaultRegion = {
+        latitude: 51.6194,
+        longitude: -0.1270,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+      };
+      setMapRegion(defaultRegion);
       setIsLoadingLocation(false);
     }
   };
@@ -92,23 +127,7 @@ export default function CustomMapView({ contentType }: MapViewProps) {
     );
   }
 
-  const getInitialRegion = () => {
-    if (userLocation) {
-      return {
-        latitude: userLocation.coords.latitude,
-        longitude: userLocation.coords.longitude,
-        latitudeDelta: 0.0922,
-        longitudeDelta: 0.0421,
-      };
-    }
-    // Default to London area
-    return {
-      latitude: 51.6194,
-      longitude: -0.1270,
-      latitudeDelta: 0.0922,
-      longitudeDelta: 0.0421,
-    };
-  };
+
 
   const handleCookMarkerPress = (cook: any) => {
     router.push(`/cook/${cook.id}`);
@@ -118,12 +137,24 @@ export default function CustomMapView({ contentType }: MapViewProps) {
     router.push(`/meal/${meal.id}`);
   };
 
+  if (!mapRegion) {
+    return (
+      <View style={styles.mapPlaceholder}>
+        <MapPin size={32} color={Colors.primary} />
+        <Text style={styles.mapPlaceholderText}>
+          Loading map...
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <MapView
       style={styles.map}
-      initialRegion={getInitialRegion()}
+      region={mapRegion}
       showsUserLocation={locationPermission}
       showsMyLocationButton={locationPermission}
+      onRegionChangeComplete={setMapRegion}
     >
       {/* Customer location marker */}
       {userLocation && (

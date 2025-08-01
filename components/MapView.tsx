@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Platform, Alert } from 'react-native';
 import { MapPin, User, ChefHat, UtensilsCrossed } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import Colors from '@/constants/colors';
 import { mockCooks } from '@/mocks/users';
@@ -20,6 +21,7 @@ if (Platform.OS !== 'web') {
 }
 
 export default function CustomMapView({ contentType }: MapViewProps) {
+  const router = useRouter();
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const [locationPermission, setLocationPermission] = useState<boolean>(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState<boolean>(true);
@@ -108,6 +110,14 @@ export default function CustomMapView({ contentType }: MapViewProps) {
     };
   };
 
+  const handleCookMarkerPress = (cook: any) => {
+    router.push(`/cook/${cook.id}`);
+  };
+
+  const handleMealMarkerPress = (meal: any) => {
+    router.push(`/meal/${meal.id}`);
+  };
+
   return (
     <MapView
       style={styles.map}
@@ -146,6 +156,7 @@ export default function CustomMapView({ contentType }: MapViewProps) {
               }}
               title={cook.name}
               description={cook.cuisineTypes?.join(', ') || 'Cook'}
+              onPress={() => handleCookMarkerPress(cook)}
             >
               <View style={styles.cookMarker}>
                 <ChefHat size={16} color="white" />
@@ -169,6 +180,7 @@ export default function CustomMapView({ contentType }: MapViewProps) {
               }}
               title={meal.name}
               description={`${meal.cuisineType} • £${meal.price} • by ${cook.name}`}
+              onPress={() => handleMealMarkerPress(meal)}
             >
               <View style={styles.mealMarker}>
                 <UtensilsCrossed size={16} color="white" />

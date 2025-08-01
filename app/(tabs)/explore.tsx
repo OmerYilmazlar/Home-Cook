@@ -1,28 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, FlatList, TextInput, TouchableOpacity, Platform } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TextInput, TouchableOpacity } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Search, MapPin, Map, List, Filter } from 'lucide-react-native';
+import { Search, Map, List } from 'lucide-react-native';
 import { useMealsStore } from '@/store/meals-store';
 import { useAuthStore } from '@/store/auth-store';
 import Colors from '@/constants/colors';
 import MealCard from '@/components/MealCard';
 import CookCard from '@/components/CookCard';
 import FilterBar from '@/components/FilterBar';
+import CustomMapView from '@/components/MapView';
 import { mockCooks } from '@/mocks/users';
-
-// Conditionally import MapView only on native platforms
-let MapView: any = null;
-let Marker: any = null;
-
-try {
-  if (Platform.OS !== 'web') {
-    const MapModule = require('react-native-maps');
-    MapView = MapModule.default;
-    Marker = MapModule.Marker;
-  }
-} catch (error) {
-  console.log('Maps not available on this platform');
-}
 
 export default function ExploreScreen() {
   const router = useRouter();
@@ -159,21 +146,7 @@ export default function ExploreScreen() {
         />
       ) : (
         <View style={styles.mapContainer}>
-          {Platform.OS === 'web' ? (
-            <View style={styles.mapPlaceholder}>
-              <MapPin size={32} color={Colors.primary} />
-              <Text style={styles.mapPlaceholderText}>
-                Map view is not available on web
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.mapPlaceholder}>
-              <MapPin size={32} color={Colors.primary} />
-              <Text style={styles.mapPlaceholderText}>
-                Map view is not available on this platform
-              </Text>
-            </View>
-          )}
+          <CustomMapView contentType={contentType} />
         </View>
       )}
     </View>
@@ -309,15 +282,5 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  mapPlaceholder: {
-    alignItems: 'center',
-    padding: 32,
-  },
-  mapPlaceholderText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: Colors.subtext,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
+
 });

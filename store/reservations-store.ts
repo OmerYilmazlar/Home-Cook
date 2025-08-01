@@ -580,6 +580,13 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
           }
         }
         
+        // Update customer's review count (the person who submitted the rating)
+        if (rating.customerId) {
+          // Use the new method to update customer review count
+          useAuthStore.getState().updateCustomerReviewCount(rating.customerId);
+          console.log('Updated customer review count via auth store method');
+        }
+        
         console.log('Rating submitted successfully');
       }
       

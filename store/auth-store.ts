@@ -55,6 +55,7 @@ interface AuthState {
   updateProfile: (userData: Partial<User>) => Promise<void>;
   addCuisineType: (cuisineType: string) => void;
   updateUserRating: (userId: string, newRating: number) => void;
+  updateCustomerReviewCount: (customerId: string) => void;
   initialize: () => void;
 }
 
@@ -228,6 +229,36 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           newAverageRating: updatedUser.rating,
           newReviewCount: updatedUser.reviewCount,
           isCurrentUser: currentUser?.id === userId
+        });
+      },
+      
+      updateCustomerReviewCount: (customerId: string) => {
+        // Find the customer to update in tempMockUsers
+        const userIndex = tempMockUsers.findIndex(u => u.id === customerId);
+        if (userIndex === -1) {
+          console.error('Customer not found for review count update:', customerId);
+          return;
+        }
+        
+        const userToUpdate = tempMockUsers[userIndex];
+        const updatedUser = {
+          ...userToUpdate,
+          reviewCount: (userToUpdate.reviewCount || 0) + 1
+        };
+        
+        // Update in tempMockUsers for persistence
+        tempMockUsers[userIndex] = updatedUser;
+        
+        // If this is the currently logged-in user, also update the current user state
+        const currentUser = get().user;
+        if (currentUser && currentUser.id === customerId) {
+          set({ user: updatedUser });
+        }
+        
+        console.log('Updated customer review count:', {
+          customerId,
+          newReviewCount: updatedUser.reviewCount,
+          isCurrentUser: currentUser?.id === customerId
         });
       },
 }));

@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, FlatList, TextInput, TouchableOpacity, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Search, MapPin, Map, List, Filter } from 'lucide-react-native';
+import MapView, { Marker } from 'react-native-maps';
 import { useMealsStore } from '@/store/meals-store';
+import { useAuthStore } from '@/store/auth-store';
 import Colors from '@/constants/colors';
 import MealCard from '@/components/MealCard';
 import CookCard from '@/components/CookCard';
@@ -13,8 +15,9 @@ export default function ExploreScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ view?: string }>();
   const { filteredMeals, fetchMeals, setCuisineFilter, setRatingFilter, setSearchQuery, searchQuery, cuisineFilter, ratingFilter } = useMealsStore();
+  const { user } = useAuthStore();
   
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'map'>(user?.userType === 'customer' ? 'map' : 'list');
   const [contentType, setContentType] = useState<'meals' | 'cooks'>(params.view === 'cooks' ? 'cooks' : 'meals');
   
   useEffect(() => {
@@ -143,12 +146,36 @@ export default function ExploreScreen() {
         />
       ) : (
         <View style={styles.mapContainer}>
-          <View style={styles.mapPlaceholder}>
-            <MapPin size={32} color={Colors.primary} />
-            <Text style={styles.mapPlaceholderText}>
-              Map view is not available in this demo
-            </Text>
-          </View>
+          {Platform.OS === 'web' ? (
+            <View style={styles.mapPlaceholder}>
+              <MapPin size={32} color={Colors.primary} />
+              <Text style={styles.mapPlaceholderText}>
+                Map view is not available on web
+              </Text>
+            </View>
+          ) : (
+            <MapView
+              style={styles.map}
+              initialRegion={{
+                latitude: user?.location?.latitude || 51.6325,
+                longitude: user?.location?.longitude || -0.0717,
+                latitudeDelta: 0.05,
+                longitudeDelta: 0.05,
+              }}
+            >
+              {mockCooks.map((cook) => (
+                <Marker
+                  key={cook.id}
+                  coordinate={{
+                    latitude: cook.location.latitude,
+                    longitude: cook.location.longitude,
+                  }}
+                  title={cook.name}
+                  description={cook.bio}
+                />
+              ))}
+            </MapView>
+          )}
         </View>
       )}
     </View>
@@ -279,9 +306,10 @@ const styles = StyleSheet.create({
   },
   mapContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: Colors.cardSecondary,
+  },
+  map: {
+    flex: 1,
   },
   mapPlaceholder: {
     alignItems: 'center',

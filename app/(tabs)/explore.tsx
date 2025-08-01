@@ -14,10 +14,14 @@ import { mockCooks } from '@/mocks/users';
 let MapView: any = null;
 let Marker: any = null;
 
-if (Platform.OS !== 'web') {
-  const MapModule = require('react-native-maps');
-  MapView = MapModule.default;
-  Marker = MapModule.Marker;
+try {
+  if (Platform.OS !== 'web') {
+    const MapModule = require('react-native-maps');
+    MapView = MapModule.default;
+    Marker = MapModule.Marker;
+  }
+} catch (error) {
+  console.log('Maps not available on this platform');
 }
 
 export default function ExploreScreen() {
@@ -163,38 +167,12 @@ export default function ExploreScreen() {
               </Text>
             </View>
           ) : (
-            MapView && Marker ? (
-              <MapView
-                style={styles.map}
-                initialRegion={{
-                  latitude: user?.location?.latitude || 51.6325,
-                  longitude: user?.location?.longitude || -0.0717,
-                  latitudeDelta: 0.05,
-                  longitudeDelta: 0.05,
-                }}
-              >
-                {mockCooks.map((cook) => 
-                  cook.location ? (
-                    <Marker
-                      key={cook.id}
-                      coordinate={{
-                        latitude: cook.location.latitude,
-                        longitude: cook.location.longitude,
-                      }}
-                      title={cook.name}
-                      description={cook.bio}
-                    />
-                  ) : null
-                )}
-              </MapView>
-            ) : (
-              <View style={styles.mapPlaceholder}>
-                <MapPin size={32} color={Colors.primary} />
-                <Text style={styles.mapPlaceholderText}>
-                  Map view is not available
-                </Text>
-              </View>
-            )
+            <View style={styles.mapPlaceholder}>
+              <MapPin size={32} color={Colors.primary} />
+              <Text style={styles.mapPlaceholderText}>
+                Map view is not available on this platform
+              </Text>
+            </View>
           )}
         </View>
       )}

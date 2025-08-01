@@ -22,7 +22,7 @@ export default function ProfileScreen() {
     );
   }
   
-  const isCook = user?.userType === 'cook';
+  const isCook = user.userType === 'cook';
   const cookUser = isCook ? (user as Cook) : null;
   
   const handleEditProfile = () => {
@@ -66,7 +66,7 @@ export default function ProfileScreen() {
           <View style={styles.profileInfo}>
             <View style={styles.avatarContainer}>
               <Image
-                source={{ uri: user?.avatar || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330' }}
+                source={{ uri: user.avatar || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330' }}
                 style={styles.avatar}
                 contentFit="cover"
               />
@@ -78,7 +78,7 @@ export default function ProfileScreen() {
             </View>
             
             <View style={styles.userInfo}>
-              <Text style={styles.name}>{user?.name || 'Unknown User'}</Text>
+              <Text style={styles.name}>{user.name || 'Unknown User'}</Text>
               
               <View style={styles.userTypeContainer}>
                 <Text style={styles.userType}>
@@ -86,15 +86,14 @@ export default function ProfileScreen() {
                 </Text>
               </View>
               
-              {user?.rating && user?.reviewCount !== undefined && user.reviewCount > 0 && (
+              {user.rating && user.reviewCount !== undefined && user.reviewCount > 0 ? (
                 <View style={styles.ratingContainer}>
                   <Star size={16} color={Colors.rating} fill={Colors.rating} />
                   <Text style={styles.rating}>
                     {user.rating.toFixed(1)} ({user.reviewCount} {user.reviewCount === 1 ? 'review' : 'reviews'})
                   </Text>
                 </View>
-              )}
-              {(!user?.rating || !user?.reviewCount || user.reviewCount === 0) && (
+              ) : (
                 <View style={styles.ratingContainer}>
                   <Star size={16} color={Colors.rating} fill={Colors.rating} />
                   <Text style={styles.rating}>
@@ -103,7 +102,7 @@ export default function ProfileScreen() {
                 </View>
               )}
               
-              {user?.location?.address && (
+              {user.location?.address && (
                 <View style={styles.locationContainer}>
                   <MapPin size={16} color={Colors.white} />
                   <Text style={styles.location} numberOfLines={1}>

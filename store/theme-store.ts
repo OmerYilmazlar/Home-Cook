@@ -20,7 +20,7 @@ const SOUND_STORAGE_KEY = '@sound_enabled';
 export const [ThemeProvider, useTheme] = createContextHook((): ThemeState => {
   const [isDark, setIsDark] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
-  const [isLoaded, setIsLoaded] = useState<boolean>(true);
+  const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
   const colors = isDark ? darkColors : lightColors;
 
@@ -50,6 +50,8 @@ export const [ThemeProvider, useTheme] = createContextHook((): ThemeState => {
       console.log('Theme store: Settings loaded successfully');
     } catch (error) {
       console.log('Error loading theme settings:', error);
+    } finally {
+      setIsLoaded(true);
     }
   };
 

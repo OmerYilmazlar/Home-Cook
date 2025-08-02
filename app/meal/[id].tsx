@@ -57,8 +57,13 @@ export default function MealDetailScreen() {
       return;
     }
     
+    if (!selectedMeal) {
+      Alert.alert('Error', 'Meal information not available');
+      return;
+    }
+    
     // Navigate to explore tab with this meal selected
-    router.push('/explore?selectedMeal=' + selectedMeal.id);
+    router.push(`/explore?selectedMeal=${selectedMeal.id}` as any);
   };
   
   // Initialize wallets for users

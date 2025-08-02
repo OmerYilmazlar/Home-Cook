@@ -29,6 +29,7 @@ export default function MealDetailScreen() {
   const [selectedPickupTime, setSelectedPickupTime] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const [travelTime, setTravelTime] = useState<string>('');
+  const [isCalculatingTime, setIsCalculatingTime] = useState<boolean>(false);
   
   // Get cook information
   const cook = selectedMeal ? (mockCooks || []).find(c => c.id === selectedMeal.cookId) : null;
@@ -47,36 +48,47 @@ export default function MealDetailScreen() {
     }
   }, [selectedMeal]);
   
-  useEffect(() => {
-    const getUserLocation = async () => {
-      if (Platform.OS === 'web') return;
-      
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          const location = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-          setUserLocation(location);
-          
-          if (selectedMeal && cook?.location) {
-            const distance = calculateDistance(
-              location.coords.latitude,
-              location.coords.longitude,
-              cook.location.latitude,
-              cook.location.longitude
-            );
-            const timeInMinutes = Math.round((distance * 60) / 30);
-            setTravelTime(`${timeInMinutes} min`);
-          }
-        }
-      } catch (error) {
-        console.error('Error getting location:', error);
-      }
-    };
+  const calculateTravelTime = async () => {
+    if (Platform.OS === 'web') return;
     
-    getUserLocation();
-  }, [selectedMeal, cook]);
+    setIsCalculatingTime(true);
+    
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        setUserLocation(location);
+        
+        if (selectedMeal && cook?.location) {
+          const distance = calculateDistance(
+            location.coords.latitude,
+            location.coords.longitude,
+            cook.location.latitude,
+            cook.location.longitude
+          );
+          const timeInMinutes = Math.round((distance * 60) / 30);
+          setTravelTime(`${timeInMinutes} min`);
+        }
+      } else {
+        Alert.alert(
+          'Location Required',
+          'Please enable location access to calculate travel time.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error getting location:', error);
+      Alert.alert(
+        'Error',
+        'Unable to calculate travel time. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsCalculatingTime(false);
+    }
+  };
   
   // Initialize wallets for users
   useEffect(() => {
@@ -306,11 +318,22 @@ export default function MealDetailScreen() {
         
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Pickup Times</Text>
-          {travelTime && (
+          {travelTime ? (
             <View style={styles.travelTimeContainer}>
               <Navigation size={16} color={Colors.primary} />
               <Text style={styles.travelTimeText}>{travelTime} travel time</Text>
             </View>
+          ) : (
+            <TouchableOpacity 
+              style={styles.calculateTimeButton}
+              onPress={calculateTravelTime}
+              disabled={isCalculatingTime}
+            >
+              <Navigation size={16} color={Colors.primary} />
+              <Text style={styles.calculateTimeText}>
+                {isCalculatingTime ? 'Calculating...' : 'Calculate travel time'}
+              </Text>
+            </TouchableOpacity>
           )}
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {(selectedMeal.pickupTimes || []).map((time, index) => (
@@ -695,6 +718,25 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   travelTimeText: {
+    fontSize: 14,
+    color: Colors.primary,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  calculateTimeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.card,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    borderStyle: 'dashed',
+  },
+  calculateTimeText: {
     fontSize: 14,
     color: Colors.primary,
     fontWeight: '600',

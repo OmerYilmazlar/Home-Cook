@@ -1,11 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Animated, Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import { Bell, X } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
+interface LocalNotification {
+  id: string;
+  title: string;
+  body: string;
+  timestamp: number;
+  read: boolean;
+  type: 'reserved' | 'confirmed' | 'ready';
+  reservationId: string;
+}
+
 interface NotificationBannerProps {
-  notification?: Notifications.Notification;
+  notification?: LocalNotification;
   onDismiss?: () => void;
 }
 
@@ -52,7 +61,7 @@ export default function NotificationBanner({ notification, onDismiss }: Notifica
     return null;
   }
 
-  const { title, body } = notification.request.content;
+  const { title, body } = notification;
 
   return (
     <Animated.View 

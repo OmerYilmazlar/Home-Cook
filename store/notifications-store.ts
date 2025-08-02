@@ -1,7 +1,6 @@
 import { create } from 'zustand';
-import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import { Reservation } from '@/types';
 
 interface NotificationSettings {
@@ -10,9 +9,18 @@ interface NotificationSettings {
   messageNotifications: boolean;
 }
 
+interface LocalNotification {
+  id: string;
+  title: string;
+  body: string;
+  timestamp: number;
+  read: boolean;
+  type: 'reserved' | 'confirmed' | 'ready';
+  reservationId: string;
+}
+
 interface NotificationState {
-  expoPushToken: string | null;
-  notifications: Notifications.Notification[];
+  notifications: LocalNotification[];
   settings: NotificationSettings;
   isLoading: boolean;
   error: string | null;
@@ -20,22 +28,12 @@ interface NotificationState {
   initializeNotifications: () => Promise<void>;
   sendOrderNotification: (type: 'reserved' | 'confirmed' | 'ready', reservation: Reservation, recipientType: 'cook' | 'customer') => Promise<void>;
   updateNotificationSettings: (settings: Partial<NotificationSettings>) => Promise<void>;
+  markAsRead: (notificationId: string) => void;
   clearNotifications: () => void;
+  getUnreadCount: () => number;
 }
 
-// Configure notification behavior
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
-
 export const useNotificationsStore = create<NotificationState>((set, get) => ({
-  expoPushToken: null,
   notifications: [],
   settings: {
     pushNotifications: true,
@@ -61,37 +59,24 @@ export const useNotificationsStore = create<NotificationState>((set, get) => ({
         console.log('Failed to load notification settings:', error);
       }
       
-      // Request permissions
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-      
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-      
-      if (finalStatus !== 'granted') {
-        console.log('Notification permissions not granted');
-        set({ isLoading: false, error: 'Notification permissions not granted' });
-        return;
-      }
-      
-      // Get push token (only on mobile)
-      let token = null;
-      if (Platform.OS !== 'web') {
-        try {
-          token = (await Notifications.getExpoPushTokenAsync()).data;
-          console.log('Expo push token:', token);
-        } catch (error) {
-          console.log('Failed to get push token:', error);
+      // Load saved notifications
+      try {
+        const savedNotifications = await AsyncStorage.getItem('localNotifications');
+        if (savedNotifications) {
+          const notifications = JSON.parse(savedNotifications);
+          set({ notifications });
+          console.log('Loaded local notifications:', notifications.length);
         }
+      } catch (error) {
+        console.log('Failed to load notifications:', error);
       }
       
-      set({ 
-        expoPushToken: token,
-        isLoading: false 
-      });
+      // Request web notification permission if on web
+      if (Platform.OS === 'web' && 'Notification' in window && Notification.permission === 'default') {
+        await Notification.requestPermission();
+      }
       
+      set({ isLoading: false });
       console.log('Notifications initialized successfully');
     } catch (error) {
       console.error('Failed to initialize notifications:', error);
@@ -104,7 +89,7 @@ export const useNotificationsStore = create<NotificationState>((set, get) => ({
   
   sendOrderNotification: async (type: 'reserved' | 'confirmed' | 'ready', reservation: Reservation, recipientType: 'cook' | 'customer') => {
     try {
-      const { settings } = get();
+      const { settings, notifications } = get();
       
       // Check if notifications are enabled
       if (!settings.pushNotifications || !settings.orderUpdates) {
@@ -126,6 +111,24 @@ export const useNotificationsStore = create<NotificationState>((set, get) => ({
         body = `Your meal(s) are ready! Please pick them up at the scheduled time.`;
       }
       
+      // Create local notification
+      const notification: LocalNotification = {
+        id: `${Date.now()}-${Math.random()}`,
+        title,
+        body,
+        timestamp: Date.now(),
+        read: false,
+        type,
+        reservationId: reservation.id
+      };
+      
+      const updatedNotifications = [notification, ...notifications];
+      set({ notifications: updatedNotifications });
+      
+      // Save to AsyncStorage
+      await AsyncStorage.setItem('localNotifications', JSON.stringify(updatedNotifications));
+      
+      // Show system notification/alert
       if (Platform.OS === 'web') {
         // For web, show browser notification if supported
         if ('Notification' in window && Notification.permission === 'granted') {
@@ -135,22 +138,14 @@ export const useNotificationsStore = create<NotificationState>((set, get) => ({
             badge: '/favicon.png'
           });
         } else {
-          console.log('Web notification:', { title, body });
+          // Fallback to alert
+          Alert.alert(title, body);
         }
       } else {
-        // For mobile, use Expo notifications
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title,
-            body,
-            data: {
-              reservationId: reservation.id,
-              type,
-              recipientType
-            },
-          },
-          trigger: null, // Show immediately
-        });
+        // For mobile, show alert (since expo-notifications has limitations in Expo Go)
+        Alert.alert(title, body, [
+          { text: 'OK', style: 'default' }
+        ]);
       }
       
       console.log('Notification sent:', { type, recipientType, title, body });
@@ -174,22 +169,32 @@ export const useNotificationsStore = create<NotificationState>((set, get) => ({
     }
   },
   
-  clearNotifications: () => {
+  markAsRead: (notificationId: string) => {
+    const { notifications } = get();
+    const updatedNotifications = notifications.map(n => 
+      n.id === notificationId ? { ...n, read: true } : n
+    );
+    set({ notifications: updatedNotifications });
+    
+    // Save to AsyncStorage
+    AsyncStorage.setItem('localNotifications', JSON.stringify(updatedNotifications))
+      .catch(error => console.error('Failed to save notifications:', error));
+  },
+  
+  clearNotifications: async () => {
     set({ notifications: [] });
-    if (Platform.OS !== 'web') {
-      Notifications.dismissAllNotificationsAsync();
+    try {
+      await AsyncStorage.removeItem('localNotifications');
+    } catch (error) {
+      console.error('Failed to clear notifications:', error);
     }
+  },
+  
+  getUnreadCount: () => {
+    const { notifications } = get();
+    return notifications.filter(n => !n.read).length;
   },
 }));
 
 // Initialize notifications when the store is created
-if (Platform.OS !== 'web') {
-  useNotificationsStore.getState().initializeNotifications();
-} else {
-  // For web, request notification permission
-  if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission().then(permission => {
-      console.log('Web notification permission:', permission);
-    });
-  }
-}
+useNotificationsStore.getState().initializeNotifications();

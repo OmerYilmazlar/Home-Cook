@@ -10,7 +10,6 @@ import { trpc, trpcClient } from "@/lib/trpc";
 import { ThemeProvider, useTheme } from "@/store/theme-store";
 import { useNotificationsStore } from "@/store/notifications-store";
 import NotificationBanner from "@/components/NotificationBanner";
-import * as Notifications from 'expo-notifications';
 import { Platform } from "react-native";
 
 export const unstable_settings = {
@@ -83,8 +82,8 @@ function RootLayoutNav() {
 
 function ThemedStack() {
   const { colors, isDark, isLoaded } = useTheme();
-  const { initializeNotifications } = useNotificationsStore();
-  const [currentNotification, setCurrentNotification] = useState<Notifications.Notification | null>(null);
+  const { initializeNotifications, notifications } = useNotificationsStore();
+  const [currentNotification, setCurrentNotification] = useState<any>(null);
   
   console.log('ThemedStack: isLoaded =', isLoaded);
   
@@ -95,23 +94,13 @@ function ThemedStack() {
     }
   }, [isLoaded, initializeNotifications]);
   
-  // Listen for notifications
+  // Show latest unread notification
   useEffect(() => {
-    const notificationListener = Notifications.addNotificationReceivedListener(notification => {
-      console.log('Notification received:', notification);
-      setCurrentNotification(notification);
-    });
-
-    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Notification response:', response);
-      // Handle notification tap here if needed
-    });
-
-    return () => {
-      Notifications.removeNotificationSubscription(notificationListener);
-      Notifications.removeNotificationSubscription(responseListener);
-    };
-  }, []);
+    const latestUnreadNotification = notifications.find(n => !n.read);
+    if (latestUnreadNotification && latestUnreadNotification !== currentNotification) {
+      setCurrentNotification(latestUnreadNotification);
+    }
+  }, [notifications, currentNotification]);
   
   // Wait for theme to load
   if (!isLoaded) {

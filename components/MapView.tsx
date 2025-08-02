@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Platform, Alert, TouchableOpacity } from 'react-native';
 import { MapPin, User, ChefHat, UtensilsCrossed, X, Navigation } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
 import Colors from '@/constants/colors';
 import { mockCooks } from '@/mocks/users';
@@ -25,14 +25,15 @@ if (Platform.OS !== 'web') {
 
 export default function CustomMapView({ contentType }: MapViewProps) {
   const router = useRouter();
+  const { selectedMeal } = useLocalSearchParams();
   const mapRef = useRef<any>(null);
-  const { userLocation, hasPermission } = useLocationStore();
+  const { userLocation, hasPermission, checkLocationPermission } = useLocationStore();
   const [mapRegion, setMapRegion] = useState<any>(null);
   const [selectedMarker, setSelectedMarker] = useState<any>(null);
   const [routeCoordinates, setRouteCoordinates] = useState<any[]>([]);
   const [travelTime, setTravelTime] = useState<string>('');
   const [availabilityTime, setAvailabilityTime] = useState<string>('');
-  const { filteredMeals } = useMealsStore();
+  const { filteredMeals, fetchMealById } = useMealsStore();
 
   // Set initial region when component mounts
   useEffect(() => {
@@ -47,6 +48,18 @@ export default function CustomMapView({ contentType }: MapViewProps) {
       setMapRegion(defaultRegion);
     }
   }, [mapRegion]);
+
+  // Handle selectedMeal from URL params
+  useEffect(() => {
+    if (selectedMeal && typeof selectedMeal === 'string') {
+      fetchMealById(selectedMeal);
+      // Find the meal and auto-select it
+      const meal = filteredMeals.find(m => m.id === selectedMeal);
+      if (meal) {
+        handleMealMarkerPress(meal);
+      }
+    }
+  }, [selectedMeal, filteredMeals]);
 
 
 
@@ -75,12 +88,14 @@ export default function CustomMapView({ contentType }: MapViewProps) {
 
 
   const calculateRoute = async (destination: { latitude: number; longitude: number }, markerData: any, type: 'cook' | 'meal') => {
-    if (!userLocation) {
-      Alert.alert('Location Required', 'Your location is needed to show the route.');
+    // Check location permission in real-time
+    await checkLocationPermission();
+    
+    if (!hasPermission || !userLocation) {
+      Alert.alert('Location Required', 'Please enable location access to show the route.');
       return;
     }
 
-    // setIsLoadingRoute(true); // Removed since variable was removed
     setSelectedMarker({ ...markerData, type });
 
     try {

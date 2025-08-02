@@ -13,7 +13,7 @@ import { mockCooks } from '@/mocks/users';
 
 export default function ExploreScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ view?: string }>();
+  const params = useLocalSearchParams<{ view?: string; selectedMeal?: string }>();
   const { filteredMeals, fetchMeals, setCuisineFilter, setRatingFilter, setSearchQuery, searchQuery, cuisineFilter, ratingFilter } = useMealsStore();
   const { user } = useAuthStore();
   
@@ -23,6 +23,14 @@ export default function ExploreScreen() {
   useEffect(() => {
     fetchMeals();
   }, []);
+  
+  // Handle selectedMeal parameter - switch to map view and meals content
+  useEffect(() => {
+    if (params.selectedMeal) {
+      setViewMode('map');
+      setContentType('meals');
+    }
+  }, [params.selectedMeal]);
   
   const handleSearch = (text: string) => {
     setSearchQuery(text);

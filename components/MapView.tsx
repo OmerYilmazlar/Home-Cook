@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Platform, Alert } from 'react-native';
-import { MapPin, User, ChefHat, UtensilsCrossed } from 'lucide-react-native';
+import { View, Text, StyleSheet, Platform, Alert, TouchableOpacity } from 'react-native';
+import { MapPin, User, ChefHat, UtensilsCrossed, X, Navigation } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import Colors from '@/constants/colors';
@@ -13,11 +13,13 @@ interface MapViewProps {
 
 let MapView: any = null;
 let Marker: any = null;
+let Polyline: any = null;
 
 if (Platform.OS !== 'web') {
   const MapModule = require('react-native-maps');
   MapView = MapModule.default;
   Marker = MapModule.Marker;
+  Polyline = MapModule.Polyline;
 }
 
 export default function CustomMapView({ contentType }: MapViewProps) {
@@ -27,6 +29,10 @@ export default function CustomMapView({ contentType }: MapViewProps) {
   const [locationPermission, setLocationPermission] = useState<boolean>(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState<boolean>(true);
   const [mapRegion, setMapRegion] = useState<any>(null);
+  const [selectedMarker, setSelectedMarker] = useState<any>(null);
+  const [routeCoordinates, setRouteCoordinates] = useState<any[]>([]);
+  const [travelTime, setTravelTime] = useState<string>('');
+  const [isLoadingRoute, setIsLoadingRoute] = useState<boolean>(false);
   const { filteredMeals } = useMealsStore();
 
   // Set initial region when component mounts
@@ -137,12 +143,105 @@ export default function CustomMapView({ contentType }: MapViewProps) {
 
 
 
+  const calculateRoute = async (destination: { latitude: number; longitude: number }, markerData: any, type: 'cook' | 'meal') => {
+    if (!userLocation) {
+      Alert.alert('Location Required', 'Your location is needed to show the route.');
+      return;
+    }
+
+    setIsLoadingRoute(true);
+    setSelectedMarker({ ...markerData, type });
+
+    try {
+      const origin = `${userLocation.coords.latitude},${userLocation.coords.longitude}`;
+      const dest = `${destination.latitude},${destination.longitude}`;
+      
+      // Using Google Maps Directions API
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${dest}&mode=driving&key=YOUR_GOOGLE_MAPS_API_KEY`
+      );
+      
+      // For demo purposes, we'll create a simple straight line route
+      // In production, you'd use the actual Google Maps API response
+      const routeCoords = [
+        {
+          latitude: userLocation.coords.latitude,
+          longitude: userLocation.coords.longitude,
+        },
+        {
+          latitude: destination.latitude,
+          longitude: destination.longitude,
+        },
+      ];
+      
+      setRouteCoordinates(routeCoords);
+      
+      // Calculate approximate travel time based on distance
+      const distance = calculateDistance(
+        userLocation.coords.latitude,
+        userLocation.coords.longitude,
+        destination.latitude,
+        destination.longitude
+      );
+      
+      // Assume average speed of 30 km/h in city
+      const timeInMinutes = Math.round((distance * 60) / 30);
+      setTravelTime(`${timeInMinutes} min`);
+      
+      // Fit the route in view
+      if (mapRef.current) {
+        mapRef.current.fitToCoordinates(routeCoords, {
+          edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
+          animated: true,
+        });
+      }
+    } catch (error) {
+      console.error('Error calculating route:', error);
+      Alert.alert('Route Error', 'Unable to calculate route. Please try again.');
+    } finally {
+      setIsLoadingRoute(false);
+    }
+  };
+
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371; // Radius of the Earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
   const handleCookMarkerPress = (cook: any) => {
-    router.push(`/cook/${cook.id}`);
+    if (cook.location?.latitude && cook.location?.longitude) {
+      calculateRoute(cook.location, cook, 'cook');
+    }
   };
 
   const handleMealMarkerPress = (meal: any) => {
-    router.push(`/meal/${meal.id}`);
+    const cook = mockCooks.find(c => c.id === meal.cookId);
+    if (cook?.location?.latitude && cook?.location?.longitude) {
+      calculateRoute(cook.location, meal, 'meal');
+    }
+  };
+
+  const clearRoute = () => {
+    setSelectedMarker(null);
+    setRouteCoordinates([]);
+    setTravelTime('');
+  };
+
+  const navigateToDetails = () => {
+    if (selectedMarker) {
+      if (selectedMarker.type === 'cook') {
+        router.push(`/cook/${selectedMarker.id}`);
+      } else {
+        router.push(`/meal/${selectedMarker.id}`);
+      }
+    }
   };
 
   if (!mapRegion) {
@@ -157,14 +256,16 @@ export default function CustomMapView({ contentType }: MapViewProps) {
   }
 
   return (
-    <MapView
-      ref={mapRef}
-      style={styles.map}
-      region={mapRegion}
-      showsUserLocation={locationPermission}
-      showsMyLocationButton={locationPermission}
-      onRegionChangeComplete={setMapRegion}
-    >
+    <View style={styles.container}>
+      <MapView
+        ref={mapRef}
+        style={styles.map}
+        region={mapRegion}
+        showsUserLocation={locationPermission}
+        showsMyLocationButton={locationPermission}
+        onRegionChangeComplete={setMapRegion}
+        onPress={clearRoute}
+      >
       {/* Customer location marker */}
       {userLocation && (
         <Marker
@@ -187,6 +288,7 @@ export default function CustomMapView({ contentType }: MapViewProps) {
       {/* Cook markers */}
       {contentType === 'cooks' && mockCooks.map((cook) => {
         if (cook.location?.latitude && cook.location?.longitude) {
+          const isSelected = selectedMarker?.id === cook.id && selectedMarker?.type === 'cook';
           return (
             <Marker
               key={cook.id}
@@ -198,7 +300,7 @@ export default function CustomMapView({ contentType }: MapViewProps) {
               description={cook.cuisineTypes?.join(', ') || 'Cook'}
               onPress={() => handleCookMarkerPress(cook)}
             >
-              <View style={styles.cookMarker}>
+              <View style={[styles.cookMarker, isSelected && styles.selectedMarker]}>
                 <ChefHat size={16} color="white" />
               </View>
             </Marker>
@@ -211,6 +313,7 @@ export default function CustomMapView({ contentType }: MapViewProps) {
       {contentType === 'meals' && filteredMeals.map((meal) => {
         const cook = mockCooks.find(c => c.id === meal.cookId);
         if (cook?.location?.latitude && cook?.location?.longitude) {
+          const isSelected = selectedMarker?.id === meal.id && selectedMarker?.type === 'meal';
           return (
             <Marker
               key={meal.id}
@@ -222,7 +325,7 @@ export default function CustomMapView({ contentType }: MapViewProps) {
               description={`${meal.cuisineType} • £${meal.price} • by ${cook.name}`}
               onPress={() => handleMealMarkerPress(meal)}
             >
-              <View style={styles.mealMarker}>
+              <View style={[styles.mealMarker, isSelected && styles.selectedMarker]}>
                 <UtensilsCrossed size={16} color="white" />
               </View>
             </Marker>
@@ -230,11 +333,46 @@ export default function CustomMapView({ contentType }: MapViewProps) {
         }
         return null;
       })}
-    </MapView>
+
+      {/* Route polyline */}
+      {routeCoordinates.length > 0 && Polyline && (
+        <Polyline
+          coordinates={routeCoordinates}
+          strokeColor={Colors.primary}
+          strokeWidth={4}
+          lineDashPattern={[5, 5]}
+        />
+      )}
+      </MapView>
+
+      {/* Route info overlay */}
+      {selectedMarker && (
+        <View style={styles.routeInfoContainer}>
+          <View style={styles.routeInfo}>
+            <View style={styles.routeHeader}>
+              <View style={styles.routeDetails}>
+                <Navigation size={16} color={Colors.primary} />
+                <Text style={styles.travelTime}>{travelTime}</Text>
+                <Text style={styles.routeText}>to {selectedMarker.name}</Text>
+              </View>
+              <TouchableOpacity onPress={clearRoute} style={styles.closeButton}>
+                <X size={20} color={Colors.subtext} />
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity onPress={navigateToDetails} style={styles.viewDetailsButton}>
+              <Text style={styles.viewDetailsText}>View Details</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   map: {
     flex: 1,
   },
@@ -312,5 +450,66 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  selectedMarker: {
+    transform: [{ scale: 1.2 }],
+    borderWidth: 3,
+    borderColor: Colors.primary,
+  },
+  routeInfoContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+  },
+  routeInfo: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  routeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  routeDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  travelTime: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    marginLeft: 8,
+    marginRight: 8,
+  },
+  routeText: {
+    fontSize: 14,
+    color: Colors.subtext,
+    flex: 1,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  viewDetailsButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  viewDetailsText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

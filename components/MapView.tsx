@@ -32,6 +32,7 @@ export default function CustomMapView({ contentType }: MapViewProps) {
   const [selectedMarker, setSelectedMarker] = useState<any>(null);
   const [routeCoordinates, setRouteCoordinates] = useState<any[]>([]);
   const [travelTime, setTravelTime] = useState<string>('');
+  const [availabilityTime, setAvailabilityTime] = useState<string>('');
   const [isLoadingRoute, setIsLoadingRoute] = useState<boolean>(false);
   const { filteredMeals } = useMealsStore();
 
@@ -87,34 +88,9 @@ export default function CustomMapView({ contentType }: MapViewProps) {
         accuracy: Location.Accuracy.Balanced,
       });
       setUserLocation(location);
-      
-      // Center the map on user's location
-      const region = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        latitudeDelta: 0.0922,
-        longitudeDelta: 0.0421,
-      };
-      setMapRegion(region);
-      
-      // Also animate to the user's location for better UX
-      setTimeout(() => {
-        if (mapRef.current) {
-          mapRef.current.animateToRegion(region, 1000);
-        }
-      }, 500);
-      
       setIsLoadingLocation(false);
     } catch (error) {
       console.error('Error getting current location:', error);
-      // Set default region if location fails
-      const defaultRegion = {
-        latitude: 51.6194,
-        longitude: -0.1270,
-        latitudeDelta: 0.0922,
-        longitudeDelta: 0.0421,
-      };
-      setMapRegion(defaultRegion);
       setIsLoadingLocation(false);
     }
   };
@@ -188,6 +164,30 @@ export default function CustomMapView({ contentType }: MapViewProps) {
       const timeInMinutes = Math.round((distance * 60) / 30);
       setTravelTime(`${timeInMinutes} min`);
       
+      // Set availability time based on marker type
+      if (type === 'meal') {
+        const meal = markerData;
+        if (meal.pickupTimes && meal.pickupTimes.length > 0) {
+          const firstPickupTime = meal.pickupTimes[0];
+          const fromTime = new Date(firstPickupTime.from).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          });
+          const toTime = new Date(firstPickupTime.to).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          });
+          setAvailabilityTime(`${fromTime}-${toTime}`);
+        } else {
+          setAvailabilityTime('');
+        }
+      } else {
+        // For cooks, we can show a general availability or leave empty
+        setAvailabilityTime('Available now');
+      }
+      
       // Fit the route in view
       if (mapRef.current) {
         mapRef.current.fitToCoordinates(routeCoords, {
@@ -232,6 +232,7 @@ export default function CustomMapView({ contentType }: MapViewProps) {
     setSelectedMarker(null);
     setRouteCoordinates([]);
     setTravelTime('');
+    setAvailabilityTime('');
   };
 
   const navigateToDetails = () => {
@@ -359,6 +360,11 @@ export default function CustomMapView({ contentType }: MapViewProps) {
                 <X size={20} color={Colors.subtext} />
               </TouchableOpacity>
             </View>
+            {availabilityTime && (
+              <View style={styles.availabilityContainer}>
+                <Text style={styles.availabilityText}>{availabilityTime}</Text>
+              </View>
+            )}
             <TouchableOpacity onPress={navigateToDetails} style={styles.viewDetailsButton}>
               <Text style={styles.viewDetailsText}>View Details</Text>
             </TouchableOpacity>
@@ -510,6 +516,19 @@ const styles = StyleSheet.create({
   viewDetailsText: {
     color: 'white',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  availabilityContainer: {
+    backgroundColor: Colors.background,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+  },
+  availabilityText: {
+    fontSize: 14,
+    color: Colors.primary,
     fontWeight: '600',
   },
 });

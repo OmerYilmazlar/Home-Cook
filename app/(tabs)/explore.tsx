@@ -105,7 +105,7 @@ export default function ExploreScreen() {
             ]}
             onPress={() => setViewMode('list')}
           >
-            <List size={18} color={viewMode === 'list' ? Colors.primary : Colors.subtext} />
+            <List size={18} color={viewMode === 'list' ? Colors.white : Colors.subtext} />
             <Text style={[
               styles.viewModeText,
               viewMode === 'list' && styles.viewModeTextActive
@@ -121,7 +121,7 @@ export default function ExploreScreen() {
             ]}
             onPress={() => setViewMode('map')}
           >
-            <Map size={18} color={viewMode === 'map' ? Colors.primary : Colors.subtext} />
+            <Map size={18} color={viewMode === 'map' ? Colors.white : Colors.subtext} />
             <Text style={[
               styles.viewModeText,
               viewMode === 'map' && styles.viewModeTextActive

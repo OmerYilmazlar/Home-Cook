@@ -40,7 +40,7 @@ export default function FavoritesScreen() {
           title="No Favorite Cooks"
           message="Start exploring and add cooks to your favorites to see them here"
           buttonText="Explore Cooks"
-          onButtonPress={() => router.push('/(tabs)/explore')}
+          onButtonPress={() => router.push('/(tabs)/explore?view=cooks')}
         />
       ) : (
         <ScrollView 

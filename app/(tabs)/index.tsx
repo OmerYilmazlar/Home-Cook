@@ -335,7 +335,7 @@ export default function HomeScreen() {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Top Cooks Near You</Text>
             <Text
               style={[styles.seeAll, { color: colors.primary }]}
-              onPress={() => router.push('/explore?view=cooks')}
+              onPress={() => router.push('/(tabs)/explore?view=cooks')}
             >
               See All
             </Text>

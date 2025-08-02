@@ -4,11 +4,30 @@ export const mockMeals: Meal[] = [
   {
     id: 'meal-1',
     cookId: 'cook-1', // Maria's ID
-    name: 'test',
-    description: 'test',
-    price: 10,
+    name: 'Authentic Chicken Tacos al Pastor',
+    description: 'Traditional Mexican tacos with marinated chicken, fresh pineapple, onions, and cilantro. Served with homemade corn tortillas and spicy salsa verde.',
+    price: 15,
     cuisineType: 'Mexican',
-    images: [],
+    images: ['https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=800&h=600&fit=crop&crop=center'],
+    ingredients: [
+      'Chicken thighs',
+      'Corn tortillas',
+      'Fresh pineapple',
+      'White onion',
+      'Fresh cilantro',
+      'Lime',
+      'Achiote paste',
+      'Orange juice',
+      'Garlic',
+      'Cumin',
+      'Oregano',
+      'Tomatillos',
+      'Jalapeño peppers',
+      'Salt'
+    ],
+    allergens: [
+      'May contain traces of gluten from corn processing'
+    ],
     availableQuantity: 2,
     pickupTimes: [
       {

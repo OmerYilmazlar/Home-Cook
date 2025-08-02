@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Platform, Alert } from 'react-native';
 import { MapPin, User, ChefHat, UtensilsCrossed } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -22,6 +22,7 @@ if (Platform.OS !== 'web') {
 
 export default function CustomMapView({ contentType }: MapViewProps) {
   const router = useRouter();
+  const mapRef = useRef<any>(null);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const [locationPermission, setLocationPermission] = useState<boolean>(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState<boolean>(true);
@@ -90,6 +91,13 @@ export default function CustomMapView({ contentType }: MapViewProps) {
       };
       setMapRegion(region);
       
+      // Also animate to the user's location for better UX
+      setTimeout(() => {
+        if (mapRef.current) {
+          mapRef.current.animateToRegion(region, 1000);
+        }
+      }, 500);
+      
       setIsLoadingLocation(false);
     } catch (error) {
       console.error('Error getting current location:', error);
@@ -150,6 +158,7 @@ export default function CustomMapView({ contentType }: MapViewProps) {
 
   return (
     <MapView
+      ref={mapRef}
       style={styles.map}
       region={mapRegion}
       showsUserLocation={locationPermission}

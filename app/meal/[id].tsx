@@ -30,6 +30,9 @@ export default function MealDetailScreen() {
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const [travelTime, setTravelTime] = useState<string>('');
   
+  // Get cook information
+  const cook = selectedMeal ? (mockCooks || []).find(c => c.id === selectedMeal.cookId) : null;
+  
   useEffect(() => {
     if (id) {
       fetchMealById(id);
@@ -84,8 +87,6 @@ export default function MealDetailScreen() {
       initializeWallet(selectedMeal.cookId, 0);
     }
   }, [user, selectedMeal]);
-  
-  const cook = selectedMeal ? (mockCooks || []).find(c => c.id === selectedMeal.cookId) : null;
   
   if (!selectedMeal) {
     return (

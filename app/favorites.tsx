@@ -19,9 +19,9 @@ export default function FavoritesScreen() {
         <Stack.Screen options={{ title: 'Favorites' }} />
         <EmptyState
           title="Access Denied"
-          subtitle="Only customers can view favorites"
-          actionText="Go Back"
-          onAction={() => router.back()}
+          message="Only customers can view favorites"
+          buttonText="Go Back"
+          onButtonPress={() => router.back()}
         />
       </View>
     );
@@ -38,9 +38,9 @@ export default function FavoritesScreen() {
       {favoriteCooks.length === 0 ? (
         <EmptyState
           title="No Favorite Cooks"
-          subtitle="Start exploring and add cooks to your favorites to see them here"
-          actionText="Explore Cooks"
-          onAction={() => router.push('/(tabs)/explore')}
+          message="Start exploring and add cooks to your favorites to see them here"
+          buttonText="Explore Cooks"
+          onButtonPress={() => router.push('/(tabs)/explore')}
         />
       ) : (
         <ScrollView 

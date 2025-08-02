@@ -85,6 +85,8 @@ export default function MealDetailScreen() {
     }
   }, [user, selectedMeal]);
   
+  const cook = selectedMeal ? (mockCooks || []).find(c => c.id === selectedMeal.cookId) : null;
+  
   if (!selectedMeal) {
     return (
       <View style={styles.loadingContainer}>
@@ -92,8 +94,6 @@ export default function MealDetailScreen() {
       </View>
     );
   }
-  
-  const cook = (mockCooks || []).find(c => c.id === selectedMeal.cookId);
   
   if (!cook) {
     console.log('Cook not found for meal:', selectedMeal.cookId);

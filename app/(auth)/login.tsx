@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Mail, Lock } from 'lucide-react-native';
+import * as Location from 'expo-location';
 import { useAuthStore } from '@/store/auth-store';
 import Colors from '@/constants/colors';
 import Input from '@/components/Input';
@@ -42,12 +43,56 @@ export default function LoginScreen() {
     return isValid;
   };
   
+  const requestLocationPermission = async (): Promise<boolean> => {
+    if (Platform.OS === 'web') {
+      return true; // Skip location permission on web
+    }
+
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Location Required',
+          'HomeCook needs access to your location to show nearby cooks and meals. Please enable location access to continue.',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+            },
+            {
+              text: 'Try Again',
+              onPress: () => requestLocationPermission(),
+            },
+          ]
+        );
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error requesting location permission:', error);
+      Alert.alert(
+        'Permission Error',
+        'Unable to request location permission. Please try again.',
+        [{ text: 'OK' }]
+      );
+      return false;
+    }
+  };
+
   const handleLogin = async () => {
     if (!validateForm()) return;
     
     try {
-      await login(email, password);
-      router.replace('/(tabs)');
+      const loginSuccess = await login(email, password);
+      if (loginSuccess) {
+        // Request location permission after successful login
+        const locationGranted = await requestLocationPermission();
+        if (locationGranted || Platform.OS === 'web') {
+          router.replace('/(tabs)');
+        }
+      }
     } catch (error) {
       Alert.alert('Login Failed', error instanceof Error ? error.message : 'An error occurred');
     }
@@ -68,8 +113,14 @@ export default function LoginScreen() {
     }
     
     try {
-      await login(demoEmail, 'password');
-      router.replace('/(tabs)');
+      const loginSuccess = await login(demoEmail, 'password');
+      if (loginSuccess) {
+        // Request location permission after successful login
+        const locationGranted = await requestLocationPermission();
+        if (locationGranted || Platform.OS === 'web') {
+          router.replace('/(tabs)');
+        }
+      }
     } catch (error) {
       Alert.alert('Login Failed', error instanceof Error ? error.message : 'An error occurred');
     }

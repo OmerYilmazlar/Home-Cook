@@ -1,6 +1,7 @@
 import React from 'react';
-import { StyleSheet, View, Text, Image, Alert } from 'react-native';
+import { StyleSheet, View, Text, Image, Alert, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Location from 'expo-location';
 import { useAuthStore } from '@/store/auth-store';
 import Colors from '@/constants/colors';
 import Button from '@/components/Button';
@@ -10,6 +11,44 @@ export default function UserTypeScreen() {
   const params = useLocalSearchParams<{ name: string; email: string; password: string }>();
   const { signup, isLoading } = useAuthStore();
   
+  const requestLocationPermission = async (): Promise<boolean> => {
+    if (Platform.OS === 'web') {
+      return true; // Skip location permission on web
+    }
+
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Location Required',
+          'HomeCook needs access to your location to show nearby cooks and meals. Please enable location access to continue.',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+            },
+            {
+              text: 'Try Again',
+              onPress: () => requestLocationPermission(),
+            },
+          ]
+        );
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error requesting location permission:', error);
+      Alert.alert(
+        'Permission Error',
+        'Unable to request location permission. Please try again.',
+        [{ text: 'OK' }]
+      );
+      return false;
+    }
+  };
+
   const handleSelectUserType = async (userType: 'cook' | 'customer') => {
     if (!params.name || !params.email || !params.password) {
       Alert.alert('Error', 'Missing required information');
@@ -26,7 +65,11 @@ export default function UserTypeScreen() {
         userType
       );
       
-      router.replace('/(tabs)');
+      // Request location permission after successful signup
+      const locationGranted = await requestLocationPermission();
+      if (locationGranted || Platform.OS === 'web') {
+        router.replace('/(tabs)');
+      }
     } catch (error) {
       Alert.alert('Signup Failed', error instanceof Error ? error.message : 'An error occurred');
     }

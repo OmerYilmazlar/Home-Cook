@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Star, MapPin, MessageCircle } from 'lucide-react-native';
+import { Star, MapPin, MessageCircle, Heart } from 'lucide-react-native';
 import { useMealsStore } from '@/store/meals-store';
 import { useAuthStore } from '@/store/auth-store';
 import { useMessagingStore } from '@/store/messaging-store';
+import { useFavoritesStore } from '@/store/favorites-store';
 import Colors from '@/constants/colors';
 import MealCard from '@/components/MealCard';
 import Button from '@/components/Button';
@@ -20,6 +21,7 @@ export default function CookProfileScreen() {
   const { user } = useAuthStore();
   const { fetchMealsByCook } = useMealsStore();
   const { createConversation } = useMessagingStore();
+  const { addFavoriteCook, removeFavoriteCook, isFavoriteCook } = useFavoritesStore();
   
   const [cook, setCook] = useState<any>(null);
   const [cookMeals, setCookMeals] = useState<any[]>([]);
@@ -71,6 +73,16 @@ export default function CookProfileScreen() {
   
   // Check if current user is viewing their own profile
   const isOwnProfile = user?.id === cook.id;
+  const isCustomer = user?.userType === 'customer';
+  const isFavorite = isFavoriteCook(cook.id);
+  
+  const handleFavoritePress = () => {
+    if (isFavorite) {
+      removeFavoriteCook(cook.id);
+    } else {
+      addFavoriteCook(cook);
+    }
+  };
   
   return (
     <ScrollView style={styles.container}>
@@ -108,11 +120,25 @@ export default function CookProfileScreen() {
       
       {!isOwnProfile && (
         <View style={styles.actionContainer}>
-          <Button
-            title="Contact Cook"
-            onPress={handleContactCook}
-            fullWidth
-          />
+          <View style={styles.buttonRow}>
+            <Button
+              title="Contact Cook"
+              onPress={handleContactCook}
+              style={styles.contactButton}
+            />
+            {isCustomer && (
+              <TouchableOpacity 
+                style={[styles.favoriteButtonLarge, isFavorite && styles.favoriteButtonActive]} 
+                onPress={handleFavoritePress}
+              >
+                <Heart 
+                  size={24} 
+                  color={isFavorite ? Colors.white : Colors.error} 
+                  fill={isFavorite ? Colors.white : 'transparent'}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       )}
       
@@ -209,6 +235,33 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  contactButton: {
+    flex: 1,
+  },
+  favoriteButtonLarge: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.white,
+    borderWidth: 2,
+    borderColor: Colors.error,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  favoriteButtonActive: {
+    backgroundColor: Colors.error,
+    borderColor: Colors.error,
   },
   bioContainer: {
     padding: 16,

@@ -198,13 +198,13 @@ export default function ProfileScreen() {
           </TouchableOpacity>
           
           {!isCook && (
-            <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert('Coming Soon', 'Favorites feature is coming soon!')}>
+            <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/favorites')}>
               <View style={styles.menuIconContainer}>
                 <Heart size={20} color={Colors.primary} />
               </View>
               <View style={styles.menuItemContent}>
                 <Text style={styles.menuItemText}>Favorites</Text>
-                <Text style={styles.menuItemSubtext}>Your saved meals</Text>
+                <Text style={styles.menuItemSubtext}>Your favorite cooks</Text>
               </View>
             </TouchableOpacity>
           )}

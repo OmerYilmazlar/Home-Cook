@@ -1,20 +1,38 @@
 import React from 'react';
-import { StyleSheet, View, Text, Pressable } from 'react-native';
+import { StyleSheet, View, Text, Pressable, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Star } from 'lucide-react-native';
+import { Star, Heart } from 'lucide-react-native';
 import { Cook } from '@/types';
 import Colors from '@/constants/colors';
+import { useFavoritesStore } from '@/store/favorites-store';
+import { useAuthStore } from '@/store/auth-store';
 
 interface CookCardProps {
   cook: Cook;
+  showFavoriteButton?: boolean;
 }
 
-export default function CookCard({ cook }: CookCardProps) {
+export default function CookCard({ cook, showFavoriteButton = true }: CookCardProps) {
   const router = useRouter();
+  const { user } = useAuthStore();
+  const { addFavoriteCook, removeFavoriteCook, isFavoriteCook } = useFavoritesStore();
+  
+  const isFavorite = isFavoriteCook(cook.id);
+  const isCustomer = user?.userType === 'customer';
   
   const handlePress = () => {
     router.push(`/cook/${cook.id}`);
+  };
+  
+  const handleFavoritePress = (e: any) => {
+    e.stopPropagation();
+    
+    if (isFavorite) {
+      removeFavoriteCook(cook.id);
+    } else {
+      addFavoriteCook(cook);
+    }
   };
   
   return (
@@ -28,7 +46,22 @@ export default function CookCard({ cook }: CookCardProps) {
         />
         
         <View style={styles.headerContent}>
-          <Text style={styles.name}>{cook.name}</Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.name}>{cook.name}</Text>
+            {showFavoriteButton && isCustomer && (
+              <TouchableOpacity 
+                style={styles.favoriteButton} 
+                onPress={handleFavoritePress}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Heart 
+                  size={20} 
+                  color={isFavorite ? Colors.error : Colors.subtext} 
+                  fill={isFavorite ? Colors.error : 'transparent'}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
           
           <View style={styles.ratingContainer}>
             <Star size={16} color={Colors.rating} fill={Colors.rating} />
@@ -92,12 +125,21 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     flex: 1,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  favoriteButton: {
+    padding: 4,
+  },
   name: {
     fontSize: 18,
     fontWeight: '700',
     color: Colors.text,
-    marginBottom: 6,
     letterSpacing: -0.3,
+    flex: 1,
   },
   ratingContainer: {
     flexDirection: 'row',

@@ -1,35 +1,32 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
 import { Bell, Shield, HelpCircle, Info, ChevronRight, Moon, Volume2 } from 'lucide-react-native';
 import { useAuthStore } from '@/store/auth-store';
 import { useTheme } from '@/store/theme-store';
+import { useNotificationsStore } from '@/store/notifications-store';
 
 export default function SettingsScreen() {
-  const router = useRouter();
   const { user } = useAuthStore();
   const { colors, isDark, soundEnabled, toggleTheme, toggleSound, playSound } = useTheme();
+  const { settings: notificationSettings, updateNotificationSettings } = useNotificationsStore();
   
-  const [pushNotifications, setPushNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
-  const [orderUpdates, setOrderUpdates] = useState(true);
-  const [messageNotifications, setMessageNotifications] = useState(true);
   
-  const handleNotificationChange = (type: string, value: boolean) => {
+  const handleNotificationChange = async (type: string, value: boolean) => {
     playSound('tap');
     
     switch (type) {
       case 'push':
-        setPushNotifications(value);
+        await updateNotificationSettings({ pushNotifications: value });
         break;
       case 'email':
         setEmailNotifications(value);
         break;
       case 'orders':
-        setOrderUpdates(value);
+        await updateNotificationSettings({ orderUpdates: value });
         break;
       case 'messages':
-        setMessageNotifications(value);
+        await updateNotificationSettings({ messageNotifications: value });
         break;
       case 'dark':
         toggleTheme();
@@ -78,7 +75,7 @@ export default function SettingsScreen() {
             <Text style={[styles.settingText, { color: colors.text }]}>Push Notifications</Text>
           </View>
           <Switch
-            value={pushNotifications}
+            value={notificationSettings.pushNotifications}
             onValueChange={(value) => handleNotificationChange('push', value)}
             trackColor={{ false: colors.inactive, true: colors.primary }}
             thumbColor={colors.white}
@@ -102,7 +99,7 @@ export default function SettingsScreen() {
             <Text style={[styles.settingText, { color: colors.text }]}>Order Updates</Text>
           </View>
           <Switch
-            value={orderUpdates}
+            value={notificationSettings.orderUpdates}
             onValueChange={(value) => handleNotificationChange('orders', value)}
             trackColor={{ false: colors.inactive, true: colors.primary }}
             thumbColor={colors.white}
@@ -114,7 +111,7 @@ export default function SettingsScreen() {
             <Text style={[styles.settingText, { color: colors.text }]}>Message Notifications</Text>
           </View>
           <Switch
-            value={messageNotifications}
+            value={notificationSettings.messageNotifications}
             onValueChange={(value) => handleNotificationChange('messages', value)}
             trackColor={{ false: colors.inactive, true: colors.primary }}
             thumbColor={colors.white}

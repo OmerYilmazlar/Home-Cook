@@ -2,12 +2,15 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/lib/trpc";
 // Imports removed as we're using the theme context
 import { ThemeProvider, useTheme } from "@/store/theme-store";
+import { useNotificationsStore } from "@/store/notifications-store";
+import NotificationBanner from "@/components/NotificationBanner";
+import * as Notifications from 'expo-notifications';
 import { Platform } from "react-native";
 
 export const unstable_settings = {
@@ -80,8 +83,35 @@ function RootLayoutNav() {
 
 function ThemedStack() {
   const { colors, isDark, isLoaded } = useTheme();
+  const { initializeNotifications } = useNotificationsStore();
+  const [currentNotification, setCurrentNotification] = useState<Notifications.Notification | null>(null);
   
   console.log('ThemedStack: isLoaded =', isLoaded);
+  
+  // Initialize notifications when app starts
+  useEffect(() => {
+    if (isLoaded) {
+      initializeNotifications();
+    }
+  }, [isLoaded, initializeNotifications]);
+  
+  // Listen for notifications
+  useEffect(() => {
+    const notificationListener = Notifications.addNotificationReceivedListener(notification => {
+      console.log('Notification received:', notification);
+      setCurrentNotification(notification);
+    });
+
+    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+      console.log('Notification response:', response);
+      // Handle notification tap here if needed
+    });
+
+    return () => {
+      Notifications.removeNotificationSubscription(notificationListener);
+      Notifications.removeNotificationSubscription(responseListener);
+    };
+  }, []);
   
   // Wait for theme to load
   if (!isLoaded) {
@@ -94,6 +124,10 @@ function ThemedStack() {
   return (
     <>
       <StatusBar style={isDark ? "light" : "dark"} />
+      <NotificationBanner 
+        notification={currentNotification || undefined}
+        onDismiss={() => setCurrentNotification(null)}
+      />
       <Stack
         screenOptions={{
           headerStyle: {

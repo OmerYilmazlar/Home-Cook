@@ -3,6 +3,7 @@ import { Reservation } from '@/types';
 import { mockReservations } from '@/mocks/reservations';
 import { usePaymentStore } from '@/store/payment-store';
 import { useMealsStore } from '@/store/meals-store';
+import { useNotificationsStore } from '@/store/notifications-store';
 
 interface ReservationsState {
   reservations: Reservation[];
@@ -177,6 +178,16 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
       
       console.log('New reservation created:', newReservation);
       
+      // Send notification to cook about new order
+      try {
+        const { sendOrderNotification } = useNotificationsStore.getState();
+        await sendOrderNotification('reserved', newReservation, 'cook');
+        console.log('Notification sent to cook for new reservation');
+      } catch (notificationError) {
+        console.error('Failed to send notification to cook:', notificationError);
+        // Continue with reservation creation even if notification fails
+      }
+      
       // CRITICAL: Add to mock data directly for persistence
       mockReservations.push(newReservation);
       console.log('Added new reservation to mock data. Total mock reservations:', mockReservations.length);
@@ -244,6 +255,27 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Send notifications based on status change
+      try {
+        const { reservations } = get();
+        const reservation = reservations.find(r => r.id === id) || mockReservations.find(r => r.id === id);
+        
+        if (reservation) {
+          const { sendOrderNotification } = useNotificationsStore.getState();
+          
+          if (status === 'confirmed') {
+            await sendOrderNotification('confirmed', reservation, 'customer');
+            console.log('Notification sent to customer for confirmed order');
+          } else if (status === 'ready_for_pickup') {
+            await sendOrderNotification('ready', reservation, 'customer');
+            console.log('Notification sent to customer for ready order');
+          }
+        }
+      } catch (notificationError) {
+        console.error('Failed to send status change notification:', notificationError);
+        // Continue with status update even if notification fails
+      }
       
       // Process payment when meal is ready for pickup
       if (status === 'ready_for_pickup') {
@@ -362,6 +394,11 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
             ...mockReservations[mockReservationIndex],
             status
           };
+          // Update payment status in mock data too
+          if (status === 'ready_for_pickup' || status === 'completed') {
+            mockReservations[mockReservationIndex].paymentStatus = 'paid';
+          }
+          
           console.log('Updated mock reservation:', {
             id,
             newStatus: status,

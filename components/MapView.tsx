@@ -355,16 +355,16 @@ export default function CustomMapView({ contentType }: MapViewProps) {
                 <Navigation size={16} color={Colors.primary} />
                 <Text style={styles.travelTime}>{travelTime}</Text>
                 <Text style={styles.routeText}>to {selectedMarker.name}</Text>
+                {availabilityTime && (
+                  <View style={styles.availabilityContainer}>
+                    <Text style={styles.availabilityText}>{availabilityTime}</Text>
+                  </View>
+                )}
               </View>
               <TouchableOpacity onPress={clearRoute} style={styles.closeButton}>
                 <X size={20} color={Colors.subtext} />
               </TouchableOpacity>
             </View>
-            {availabilityTime && (
-              <View style={styles.availabilityContainer}>
-                <Text style={styles.availabilityText}>{availabilityTime}</Text>
-              </View>
-            )}
             <TouchableOpacity onPress={navigateToDetails} style={styles.viewDetailsButton}>
               <Text style={styles.viewDetailsText}>View Details</Text>
             </TouchableOpacity>
@@ -491,6 +491,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    flexWrap: 'wrap',
   },
   travelTime: {
     fontSize: 18,
@@ -520,14 +521,14 @@ const styles = StyleSheet.create({
   },
   availabilityContainer: {
     backgroundColor: Colors.background,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginBottom: 8,
-    alignSelf: 'flex-start',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginLeft: 8,
+    alignSelf: 'center',
   },
   availabilityText: {
-    fontSize: 14,
+    fontSize: 12,
     color: Colors.primary,
     fontWeight: '600',
   },

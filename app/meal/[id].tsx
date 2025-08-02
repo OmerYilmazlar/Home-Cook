@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Star, Clock, Calendar, User, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Star, Clock, Calendar, User, MessageCircle, ChevronLeft, ChevronRight, Navigation } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Location from 'expo-location';
 import { useMealsStore } from '@/store/meals-store';
 import { useAuthStore } from '@/store/auth-store';
 import { useReservationsStore } from '@/store/reservations-store';
@@ -26,6 +27,8 @@ export default function MealDetailScreen() {
   
   const [quantity, setQuantity] = useState(1);
   const [selectedPickupTime, setSelectedPickupTime] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
+  const [travelTime, setTravelTime] = useState<string>('');
   
   useEffect(() => {
     if (id) {
@@ -40,6 +43,37 @@ export default function MealDetailScreen() {
       setSelectedPickupTime(selectedMeal.pickupTimes[0].from);
     }
   }, [selectedMeal]);
+  
+  useEffect(() => {
+    const getUserLocation = async () => {
+      if (Platform.OS === 'web') return;
+      
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          setUserLocation(location);
+          
+          if (selectedMeal && cook?.location) {
+            const distance = calculateDistance(
+              location.coords.latitude,
+              location.coords.longitude,
+              cook.location.latitude,
+              cook.location.longitude
+            );
+            const timeInMinutes = Math.round((distance * 60) / 30);
+            setTravelTime(`${timeInMinutes} min`);
+          }
+        }
+      } catch (error) {
+        console.error('Error getting location:', error);
+      }
+    };
+    
+    getUserLocation();
+  }, [selectedMeal, cook]);
   
   // Initialize wallets for users
   useEffect(() => {
@@ -85,6 +119,18 @@ export default function MealDetailScreen() {
       hour: 'numeric',
       minute: '2-digit',
     });
+  };
+  
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
   };
   
   const handleIncreaseQuantity = () => {
@@ -259,6 +305,12 @@ export default function MealDetailScreen() {
         
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Pickup Times</Text>
+          {travelTime && (
+            <View style={styles.travelTimeContainer}>
+              <Navigation size={16} color={Colors.primary} />
+              <Text style={styles.travelTimeText}>{travelTime} travel time</Text>
+            </View>
+          )}
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {(selectedMeal.pickupTimes || []).map((time, index) => (
               <TouchableOpacity
@@ -630,5 +682,21 @@ const styles = StyleSheet.create({
     color: Colors.subtext,
     textAlign: 'center',
     opacity: 0.8,
+  },
+  travelTimeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.card,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
+    alignSelf: 'flex-start',
+  },
+  travelTimeText: {
+    fontSize: 14,
+    color: Colors.primary,
+    fontWeight: '600',
+    marginLeft: 6,
   },
 });

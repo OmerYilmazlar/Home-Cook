@@ -6,6 +6,7 @@ import * as Location from 'expo-location';
 import Colors from '@/constants/colors';
 import { mockCooks } from '@/mocks/users';
 import { useMealsStore } from '@/store/meals-store';
+import { useLocationStore } from '@/store/location-store';
 
 interface MapViewProps {
   contentType: 'meals' | 'cooks';
@@ -25,15 +26,12 @@ if (Platform.OS !== 'web') {
 export default function CustomMapView({ contentType }: MapViewProps) {
   const router = useRouter();
   const mapRef = useRef<any>(null);
-  const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
-  const [locationPermission, setLocationPermission] = useState<boolean>(false);
-  const [isLoadingLocation, setIsLoadingLocation] = useState<boolean>(true);
+  const { userLocation, hasPermission } = useLocationStore();
   const [mapRegion, setMapRegion] = useState<any>(null);
   const [selectedMarker, setSelectedMarker] = useState<any>(null);
   const [routeCoordinates, setRouteCoordinates] = useState<any[]>([]);
   const [travelTime, setTravelTime] = useState<string>('');
   const [availabilityTime, setAvailabilityTime] = useState<string>('');
-  const [isLoadingRoute, setIsLoadingRoute] = useState<boolean>(false);
   const { filteredMeals } = useMealsStore();
 
   // Set initial region when component mounts
@@ -50,50 +48,7 @@ export default function CustomMapView({ contentType }: MapViewProps) {
     }
   }, [mapRegion]);
 
-  useEffect(() => {
-    const requestPermission = async () => {
-      try {
-        if (Platform.OS === 'web') {
-          setIsLoadingLocation(false);
-          return;
-        }
 
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert(
-            'Location Permission',
-            'Permission to access location was denied. You can still view cooks on the map, but your location won\'t be shown.',
-            [{ text: 'OK' }]
-          );
-          setIsLoadingLocation(false);
-          return;
-        }
-
-        setLocationPermission(true);
-        getCurrentLocation();
-      } catch (error) {
-        console.error('Error requesting location permission:', error);
-        setIsLoadingLocation(false);
-      }
-    };
-
-    requestPermission();
-  }, []);
-
-
-
-  const getCurrentLocation = async () => {
-    try {
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      setUserLocation(location);
-      setIsLoadingLocation(false);
-    } catch (error) {
-      console.error('Error getting current location:', error);
-      setIsLoadingLocation(false);
-    }
-  };
 
   if (Platform.OS === 'web') {
     return (
@@ -125,7 +80,7 @@ export default function CustomMapView({ contentType }: MapViewProps) {
       return;
     }
 
-    setIsLoadingRoute(true);
+    // setIsLoadingRoute(true); // Removed since variable was removed
     setSelectedMarker({ ...markerData, type });
 
     try {
@@ -198,8 +153,6 @@ export default function CustomMapView({ contentType }: MapViewProps) {
     } catch (error) {
       console.error('Error calculating route:', error);
       Alert.alert('Route Error', 'Unable to calculate route. Please try again.');
-    } finally {
-      setIsLoadingRoute(false);
     }
   };
 
@@ -262,8 +215,8 @@ export default function CustomMapView({ contentType }: MapViewProps) {
         ref={mapRef}
         style={styles.map}
         region={mapRegion}
-        showsUserLocation={locationPermission}
-        showsMyLocationButton={locationPermission}
+        showsUserLocation={hasPermission}
+        showsMyLocationButton={hasPermission}
         onRegionChangeComplete={setMapRegion}
         onPress={clearRoute}
       >

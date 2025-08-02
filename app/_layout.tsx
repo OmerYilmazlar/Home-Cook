@@ -9,7 +9,10 @@ import { trpc, trpcClient } from "@/lib/trpc";
 // Imports removed as we're using the theme context
 import { ThemeProvider, useTheme } from "@/store/theme-store";
 import { useNotificationsStore } from "@/store/notifications-store";
+import { useLocationStore } from "@/store/location-store";
+import { useAuthStore } from "@/store/auth-store";
 import NotificationBanner from "@/components/NotificationBanner";
+import LocationPermissionModal from "@/components/LocationPermissionModal";
 import { Platform } from "react-native";
 
 export const unstable_settings = {
@@ -83,6 +86,14 @@ function RootLayoutNav() {
 function ThemedStack() {
   const { colors, isDark, isLoaded } = useTheme();
   const { initializeNotifications, notifications } = useNotificationsStore();
+  const { isAuthenticated } = useAuthStore();
+  const { 
+    showLocationModal, 
+    setShowLocationModal, 
+    checkLocationPermission, 
+    startLocationMonitoring, 
+    stopLocationMonitoring 
+  } = useLocationStore();
   const [currentNotification, setCurrentNotification] = useState<any>(null);
   
   console.log('ThemedStack: isLoaded =', isLoaded);
@@ -93,6 +104,22 @@ function ThemedStack() {
       initializeNotifications();
     }
   }, [isLoaded, initializeNotifications]);
+  
+  // Initialize location monitoring when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && isLoaded) {
+      checkLocationPermission();
+      startLocationMonitoring();
+    } else if (!isAuthenticated) {
+      stopLocationMonitoring();
+    }
+    
+    return () => {
+      if (!isAuthenticated) {
+        stopLocationMonitoring();
+      }
+    };
+  }, [isAuthenticated, isLoaded, checkLocationPermission, startLocationMonitoring, stopLocationMonitoring]);
   
   // Show latest unread notification
   useEffect(() => {
@@ -116,6 +143,10 @@ function ThemedStack() {
       <NotificationBanner 
         notification={currentNotification || undefined}
         onDismiss={() => setCurrentNotification(null)}
+      />
+      <LocationPermissionModal
+        visible={showLocationModal && isAuthenticated}
+        onClose={() => setShowLocationModal(false)}
       />
       <Stack
         screenOptions={{

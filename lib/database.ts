@@ -149,7 +149,11 @@ export const userService = {
   },
 
   async createUser(userData: Partial<User>, userType: UserType): Promise<Cook | Customer> {
+    // Generate a unique ID for the user
+    const userId = `${userType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     const dbUser = {
+      id: userId,
       name: userData.name || '',
       email: userData.email || '',
       phone: userData.phone,
@@ -237,8 +241,12 @@ export const mealService = {
   },
 
   async createMeal(meal: Omit<Meal, 'id' | 'createdAt'>): Promise<Meal> {
+    // Generate a unique ID for the meal
+    const mealId = `meal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     const dbMeal = {
       ...convertAppMealToDbMeal(meal as Meal),
+      id: mealId,
       created_at: new Date().toISOString()
     };
     const { id, ...mealWithoutId } = dbMeal;
@@ -281,7 +289,11 @@ export const mealService = {
 // Reservation operations
 export const reservationService = {
   async createReservation(reservation: Omit<Reservation, 'id' | 'createdAt'>): Promise<Reservation> {
+    // Generate a unique ID for the reservation
+    const reservationId = `reservation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     const dbReservation = {
+      id: reservationId,
       meal_id: reservation.mealId,
       customer_id: reservation.customerId,
       cook_id: reservation.cookId,
@@ -357,9 +369,13 @@ export const reservationService = {
 // Message operations
 export const messageService = {
   async sendMessage(senderId: string, receiverId: string, content: string): Promise<Message> {
+    // Generate a unique ID for the message
+    const messageId = `message-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     const { data, error } = await supabase
       .from('messages')
       .insert({
+        id: messageId,
         sender_id: senderId,
         receiver_id: receiverId,
         content,

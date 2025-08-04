@@ -86,7 +86,7 @@ export const useMealsStore = create<MealsState>((set, get) => ({
         throw new Error('Meal not found');
       }
       
-      set({ selectedMeal: meal || undefined, isLoading: false });
+      set({ selectedMeal: meal, isLoading: false });
     } catch (error) {
       set({ 
         error: error instanceof Error ? error.message : 'Failed to fetch meal', 

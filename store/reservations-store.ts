@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Reservation } from '@/types';
-import { mockReservations } from '@/mocks/reservations';
+import { reservationService } from '@/lib/database';
 import { usePaymentStore } from '@/store/payment-store';
 import { useMealsStore } from '@/store/meals-store';
 import { useNotificationsStore } from '@/store/notifications-store';
@@ -36,11 +36,10 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      // This method is not used in the current implementation
+      // but keeping it for potential future use
       set({ 
-        reservations: mockReservations,
+        reservations: [],
         isLoading: false 
       });
     } catch (error) {
@@ -56,32 +55,19 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
     
     try {
       console.log('Fetching reservation by ID:', id);
-      console.log('Available reservations in mock data:', mockReservations.map(r => ({ id: r.id, status: r.status })));
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 300));
       
       const state = get();
-      console.log('Available reservations in state:', state.reservations.map(r => ({ id: r.id, status: r.status })));
       
-      // Search in all possible locations
+      // First check in local state
       let reservation = 
-        // First check in all reservations (includes newly created ones)
         state.reservations.find(r => r.id === id) ||
-        // Check in mock data
-        mockReservations.find(r => r.id === id) ||
-        // Check in customer/cook reservations
         state.customerReservations.find(r => r.id === id) ||
         state.cookReservations.find(r => r.id === id);
       
+      // If not found locally, this would typically fetch from Supabase
+      // For now, we'll just handle the not found case
       if (!reservation) {
         console.error('Reservation not found with ID:', id);
-        console.error('Available reservation IDs:', [
-          ...state.reservations.map(r => r.id),
-          ...mockReservations.map(r => r.id),
-          ...state.customerReservations.map(r => r.id),
-          ...state.cookReservations.map(r => r.id)
-        ]);
         throw new Error('Reservation not found');
       }
       
@@ -103,22 +89,13 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
     try {
       console.log('Fetching customer reservations for:', customerId);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Fetch customer reservations from Supabase
+      const customerReservations = await reservationService.getReservationsByCustomerId(customerId);
       
-      // Include both mock reservations and any new ones in the store
-      const state = get();
-      const mockCustomerReservations = mockReservations.filter(r => r.customerId === customerId);
-      const newReservations = state.reservations.filter(r => 
-        r.customerId === customerId && !mockReservations.find(mock => mock.id === r.id)
-      );
+      console.log('Found customer reservations:', customerReservations.length);
+      console.log('Reservation statuses:', customerReservations.map(r => ({ id: r.id, status: r.status })));
       
-      const allCustomerReservations = [...mockCustomerReservations, ...newReservations];
-      
-      console.log('Found customer reservations:', allCustomerReservations.length);
-      console.log('Reservation statuses:', allCustomerReservations.map(r => ({ id: r.id, status: r.status })));
-      
-      set({ customerReservations: allCustomerReservations, isLoading: false });
+      set({ customerReservations, isLoading: false });
     } catch (error) {
       console.error('Failed to fetch customer reservations:', error);
       set({ 
@@ -134,22 +111,13 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
     try {
       console.log('Fetching cook reservations for:', cookId);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Fetch cook reservations from Supabase
+      const cookReservations = await reservationService.getReservationsByCookId(cookId);
       
-      // Include both mock reservations and any new ones in the store
-      const state = get();
-      const mockCookReservations = mockReservations.filter(r => r.cookId === cookId);
-      const newReservations = state.reservations.filter(r => 
-        r.cookId === cookId && !mockReservations.find(mock => mock.id === r.id)
-      );
+      console.log('Found cook reservations:', cookReservations.length);
+      console.log('Cook reservation statuses:', cookReservations.map(r => ({ id: r.id, status: r.status })));
       
-      const allCookReservations = [...mockCookReservations, ...newReservations];
-      
-      console.log('Found cook reservations:', allCookReservations.length);
-      console.log('Cook reservation statuses:', allCookReservations.map(r => ({ id: r.id, status: r.status })));
-      
-      set({ cookReservations: allCookReservations, isLoading: false });
+      set({ cookReservations, isLoading: false });
     } catch (error) {
       console.error('Failed to fetch cook reservations:', error);
       set({ 
@@ -165,16 +133,12 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
     try {
       console.log('Creating reservation:', reservation);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      const newReservation: Reservation = {
+      // Create reservation in Supabase
+      const newReservation = await reservationService.createReservation({
         ...reservation,
-        id: `new-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        paymentStatus: 'pending', // Payment will be processed later
+        paymentStatus: 'pending',
         totalAmount: reservation.totalAmount || reservation.totalPrice,
-      };
+      });
       
       console.log('New reservation created:', newReservation);
       
@@ -187,11 +151,6 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
         console.error('Failed to send notification to cook:', notificationError);
         // Continue with reservation creation even if notification fails
       }
-      
-      // CRITICAL: Add to mock data directly for persistence
-      mockReservations.push(newReservation);
-      console.log('Added new reservation to mock data. Total mock reservations:', mockReservations.length);
-      console.log('New reservation added with ID:', newReservation.id);
       
       // Decrease meal quantity immediately upon reservation
       try {
@@ -258,8 +217,10 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
       
       // Send notifications based on status change
       try {
-        const { reservations } = get();
-        const reservation = reservations.find(r => r.id === id) || mockReservations.find(r => r.id === id);
+        const { reservations, customerReservations, cookReservations } = get();
+        const reservation = reservations.find(r => r.id === id) || 
+                          customerReservations.find(r => r.id === id) ||
+                          cookReservations.find(r => r.id === id);
         
         if (reservation) {
           const { sendOrderNotification } = useNotificationsStore.getState();
@@ -301,11 +262,11 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
             });
             
             // Update the reservation with payment info in mock data
-            const mockReservation = mockReservations.find(r => r.id === id);
-            if (mockReservation) {
-              mockReservation.paymentId = transaction.id;
-              mockReservation.paymentStatus = 'paid';
-            }
+            // Update reservation in Supabase with payment info
+            await reservationService.updateReservation(id, {
+              paymentId: transaction.id,
+              paymentStatus: 'paid'
+            });
           }
         } catch (paymentError) {
           console.error('Payment failed for ready meal:', paymentError);
@@ -387,31 +348,31 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
               } 
             : state.selectedReservation;
         
-        // CRITICAL: Also update the mock data directly to ensure persistence
-        const mockReservationIndex = mockReservations.findIndex(r => r.id === id);
-        if (mockReservationIndex !== -1) {
-          mockReservations[mockReservationIndex] = {
-            ...mockReservations[mockReservationIndex],
-            status
-          };
-          // Update payment status in mock data too
+        // Update reservation in Supabase
+        try {
+          const updates: any = { status };
           if (status === 'ready_for_pickup' || status === 'completed') {
-            mockReservations[mockReservationIndex].paymentStatus = 'paid';
+            updates.paymentStatus = 'paid';
           }
+          await reservationService.updateReservation(id, updates);
           
-          console.log('Updated mock reservation:', {
+          console.log('Updated reservation in Supabase:', {
             id,
             newStatus: status,
-            mockReservation: mockReservations[mockReservationIndex]
+            updates
           });
+        } catch (dbError) {
+          console.error('Failed to update reservation in Supabase:', dbError);
+          // Continue with local state update even if DB update fails
         }
         
         // Handle meal quantity decrease when order is confirmed
         if (status === 'confirmed') {
           try {
-            const { reservations } = get();
+            const { reservations, customerReservations, cookReservations } = get();
             const reservation = reservations.find(r => r.id === id) || 
-                              mockReservations.find(r => r.id === id);
+                              customerReservations.find(r => r.id === id) ||
+                              cookReservations.find(r => r.id === id);
             
             if (reservation) {
               const { decreaseMealQuantity } = useMealsStore.getState();
@@ -482,8 +443,10 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
       setTimeout(async () => {
         try {
           // Get the updated reservation to find affected users
-          const updatedReservation = get().reservations.find(r => r.id === id) || 
-                                   mockReservations.find(r => r.id === id);
+          const { reservations, customerReservations, cookReservations } = get();
+          const updatedReservation = reservations.find(r => r.id === id) || 
+                                   customerReservations.find(r => r.id === id) ||
+                                   cookReservations.find(r => r.id === id);
           
           if (updatedReservation) {
             // Refresh both customer and cook data
@@ -553,10 +516,14 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
           isLoading: false,
         }));
         
-        // Update mock data for persistence
-        const mockReservation = mockReservations.find(r => r.id === reservationId);
-        if (mockReservation) {
-          mockReservation.rating = updatedReservation.rating;
+        // Update reservation in Supabase with rating
+        try {
+          await reservationService.updateReservation(reservationId, {
+            rating: updatedReservation.rating
+          });
+        } catch (dbError) {
+          console.error('Failed to update reservation rating in Supabase:', dbError);
+          // Continue with local state update even if DB update fails
         }
         
         // Update meal and cook ratings (this would typically be done on the backend)
@@ -574,53 +541,14 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
           // Update in auth store (this will update the logged-in user if it's the cook)
           useAuthStore.getState().updateUserRating(reservation.cookId, rating.cookRating);
           
-          // Also update the cook in mockCooks for consistency
-          try {
-            const { mockCooks } = await import('@/mocks/users');
-            const cookIndex = mockCooks.findIndex(c => c.id === reservation.cookId);
-            if (cookIndex !== -1) {
-              const cook = mockCooks[cookIndex];
-              const currentRating = cook.rating || 0;
-              const currentReviewCount = cook.reviewCount || 0;
-              const newReviewCount = currentReviewCount + 1;
-              const totalRatingPoints = (currentRating * currentReviewCount) + rating.cookRating;
-              const newAverageRating = totalRatingPoints / newReviewCount;
-              
-              // Update the mock cook data
-              mockCooks[cookIndex] = {
-                ...cook,
-                rating: Math.round(newAverageRating * 10) / 10,
-                reviewCount: newReviewCount
-              };
-              
-              console.log('Updated cook in mockCooks:', {
-                cookId: reservation.cookId,
-                newRating: mockCooks[cookIndex].rating,
-                newReviewCount: mockCooks[cookIndex].reviewCount
-              });
-              
-              // Force refresh the current user if they are the cook being rated
-              const currentUser = useAuthStore.getState().user;
-              if (currentUser && currentUser.id === reservation.cookId) {
-                // Update the current user with the new rating
-                const updatedUser = {
-                  ...currentUser,
-                  rating: mockCooks[cookIndex].rating,
-                  reviewCount: mockCooks[cookIndex].reviewCount
-                };
-                useAuthStore.setState({ user: updatedUser });
-                console.log('Updated current user rating in auth store:', updatedUser);
-              }
-            }
-          } catch (error) {
-            console.error('Failed to update cook in mockCooks:', error);
-          }
+          // Cook rating is already updated via auth store method above
+          console.log('Cook rating updated via auth store method');
         }
         
         // Update customer's review count (the person who submitted the rating)
         if (rating.customerId) {
           // Use the new method to update customer review count
-          useAuthStore.getState().updateCustomerReviewCount(rating.customerId);
+          await useAuthStore.getState().updateCustomerReviewCount(rating.customerId);
           console.log('Updated customer review count via auth store method');
         }
         

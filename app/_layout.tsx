@@ -98,10 +98,12 @@ function ThemedStack() {
   
   console.log('ThemedStack: isLoaded =', isLoaded);
   
-  // Initialize notifications when app starts
+  // Initialize notifications and database when app starts
   useEffect(() => {
     if (isLoaded) {
       initializeNotifications();
+      // Initialize auth store which will set up the database
+      useAuthStore.getState().initialize();
     }
   }, [isLoaded, initializeNotifications]);
   
@@ -215,6 +217,34 @@ function ThemedStack() {
           name="my-meals" 
           options={{ 
             title: "My Meals",
+            presentation: "card",
+          }} 
+        />
+        <Stack.Screen 
+          name="edit-meal/[id]" 
+          options={{ 
+            title: "Edit Meal",
+            presentation: "modal",
+          }} 
+        />
+        <Stack.Screen 
+          name="rate-order/[id]" 
+          options={{ 
+            title: "Rate Order",
+            presentation: "modal",
+          }} 
+        />
+        <Stack.Screen 
+          name="transaction-history" 
+          options={{ 
+            title: "Transaction History",
+            presentation: "card",
+          }} 
+        />
+        <Stack.Screen 
+          name="favorites" 
+          options={{ 
+            title: "Favorite Cooks",
             presentation: "card",
           }} 
         />

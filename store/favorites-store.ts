@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Cook } from '@/types';
+import { userService } from '@/lib/database';
+import { useAuthStore } from './auth-store';
 
 interface FavoritesState {
   favoriteCooks: Cook[];
@@ -16,20 +18,51 @@ export const useFavoritesStore = create<FavoritesState>()(
     (set, get) => ({
       favoriteCooks: [],
       
-      addFavoriteCook: (cook: Cook) => {
+      addFavoriteCook: async (cook: Cook) => {
         const { favoriteCooks } = get();
         const isAlreadyFavorite = favoriteCooks.some(favCook => favCook.id === cook.id);
         
         if (!isAlreadyFavorite) {
-          set({ favoriteCooks: [...favoriteCooks, cook] });
+          const updatedFavorites = [...favoriteCooks, cook];
+          set({ favoriteCooks: updatedFavorites });
+          
+          // Update user's favorites in Supabase
+          try {
+            const currentUser = useAuthStore.getState().user;
+            if (currentUser && currentUser.userType === 'customer') {
+              const favoriteIds = updatedFavorites.map(c => c.id);
+              await userService.updateUser(currentUser.id, {
+                ...currentUser,
+                favorites: favoriteIds
+              });
+            }
+          } catch (error) {
+            console.error('Failed to update favorites in database:', error);
+          }
+          
           console.log('Added cook to favorites:', cook.name);
         }
       },
       
-      removeFavoriteCook: (cookId: string) => {
+      removeFavoriteCook: async (cookId: string) => {
         const { favoriteCooks } = get();
         const updatedFavorites = favoriteCooks.filter(cook => cook.id !== cookId);
         set({ favoriteCooks: updatedFavorites });
+        
+        // Update user's favorites in Supabase
+        try {
+          const currentUser = useAuthStore.getState().user;
+          if (currentUser && currentUser.userType === 'customer') {
+            const favoriteIds = updatedFavorites.map(c => c.id);
+            await userService.updateUser(currentUser.id, {
+              ...currentUser,
+              favorites: favoriteIds
+            });
+          }
+        } catch (error) {
+          console.error('Failed to update favorites in database:', error);
+        }
+        
         console.log('Removed cook from favorites:', cookId);
       },
       

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message, Conversation } from '@/types';
-import { mockMessages, mockConversations } from '@/mocks/messages';
+import { messageService } from '@/lib/database';
 
 interface MessagingState {
   conversations: Conversation[];
@@ -30,50 +30,18 @@ export const useMessagingStore = create<MessagingState>()(persist(
     error: null,
     
     initializeMessages: () => {
-      const state = get();
-      if (state.allMessages.length === 0) {
-        set({ allMessages: [...mockMessages] });
-      }
+      // Messages will be loaded from Supabase when needed
+      console.log('Messaging store initialized');
     },
   
   fetchConversations: async (userId: string) => {
     set({ isLoading: true, error: null });
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const state = get();
-      
-      // Get user conversations
-      const userConversations = mockConversations.filter(
-        conversation => conversation.participants.includes(userId)
-      );
-      
-      // Update conversations with latest messages from global store
-      const updatedConversations = userConversations.map(conversation => {
-        const conversationMessages = state.allMessages.filter(message => 
-          conversation.participants.includes(message.senderId) && 
-          conversation.participants.includes(message.receiverId)
-        );
-        
-        const lastMessage = conversationMessages.length > 0 
-          ? conversationMessages[conversationMessages.length - 1]
-          : conversation.lastMessage;
-          
-        const unreadCount = conversationMessages.filter(
-          message => !message.read && message.receiverId === userId
-        ).length;
-        
-        return {
-          ...conversation,
-          lastMessage,
-          unreadCount,
-        };
-      });
-      
+      // For now, we'll create a simplified conversation list
+      // In a real app, this would fetch from Supabase
       set({ 
-        conversations: updatedConversations,
+        conversations: [],
         isLoading: false 
       });
     } catch (error) {
@@ -84,24 +52,12 @@ export const useMessagingStore = create<MessagingState>()(persist(
     }
   },
   
-  fetchMessages: async (conversationIdOrUserId: string) => {
+  fetchMessages: async (userId1: string, userId2?: string) => {
     set({ isLoading: true, error: null });
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      const state = get();
-      
-      // First try to find by conversation ID
-      let conversation = [...mockConversations, ...state.conversations].find(c => c.id === conversationIdOrUserId);
-      
-      // If not found, try to find by user ID (create conversation between current user and this user)
-      if (!conversation) {
-        console.log('No conversation found, looking for existing conversation with user:', conversationIdOrUserId);
-        // This means we're looking for a conversation with a specific user
-        // We need to find or create a conversation between the current user and this user
-        // For now, we'll create an empty conversation and let the send message handle creation
+      if (!userId2) {
+        // If only one user ID provided, create empty conversation
         set({ 
           currentConversation: null,
           messages: [],
@@ -110,15 +66,21 @@ export const useMessagingStore = create<MessagingState>()(persist(
         return;
       }
       
-      // Filter messages from global store based on participants
-      const conversationMessages = state.allMessages.filter(message => 
-        conversation.participants.includes(message.senderId) && 
-        conversation.participants.includes(message.receiverId)
-      );
+      // Fetch messages between two users from Supabase
+      const messages = await messageService.getMessagesBetweenUsers(userId1, userId2);
+      
+      // Create or find conversation
+      const conversationId = `${userId1}-${userId2}`;
+      const conversation: Conversation = {
+        id: conversationId,
+        participants: [userId1, userId2],
+        lastMessage: messages.length > 0 ? messages[messages.length - 1] : undefined,
+        unreadCount: messages.filter(m => !m.read && m.receiverId === userId1).length
+      };
       
       set({ 
         currentConversation: conversation,
-        messages: conversationMessages,
+        messages,
         isLoading: false 
       });
     } catch (error) {
@@ -133,15 +95,12 @@ export const useMessagingStore = create<MessagingState>()(persist(
     set({ isLoading: true, error: null });
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      const newMessage: Message = {
-        ...messageData,
-        id: `new-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        read: false,
-      };
+      // Send message to Supabase
+      const newMessage = await messageService.sendMessage(
+        messageData.senderId,
+        messageData.receiverId,
+        messageData.content
+      );
       
       set(state => {
         // Add message to global messages array
@@ -186,22 +145,26 @@ export const useMessagingStore = create<MessagingState>()(persist(
     }
   },
   
-  markAsRead: async (messageIds: string[]) => {
+  markAsRead: async (userId: string, otherUserId: string) => {
     set({ isLoading: true, error: null });
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Mark messages as read in Supabase
+      await messageService.markMessagesAsRead(userId, otherUserId);
       
       set(state => {
-        // Update messages in global store
+        // Update messages in local state
         const updatedAllMessages = state.allMessages.map(message => 
-          messageIds.includes(message.id) ? { ...message, read: true } : message
+          message.senderId === otherUserId && message.receiverId === userId
+            ? { ...message, read: true } 
+            : message
         );
         
         // Update current conversation messages
         const updatedMessages = state.messages.map(message => 
-          messageIds.includes(message.id) ? { ...message, read: true } : message
+          message.senderId === otherUserId && message.receiverId === userId
+            ? { ...message, read: true } 
+            : message
         );
         
         // Update unread count in current conversation
@@ -213,22 +176,10 @@ export const useMessagingStore = create<MessagingState>()(persist(
           };
         }
         
-        // Update unread count in conversations array
-        const updatedConversations = state.conversations.map(conversation => {
-          if (conversation.id === state.currentConversation?.id) {
-            return {
-              ...conversation,
-              unreadCount: 0,
-            };
-          }
-          return conversation;
-        });
-        
         return {
           allMessages: updatedAllMessages,
           messages: updatedMessages,
           currentConversation: updatedCurrentConversation,
-          conversations: updatedConversations,
           isLoading: false,
         };
       });
@@ -244,14 +195,10 @@ export const useMessagingStore = create<MessagingState>()(persist(
     set({ isLoading: true, error: null });
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
       const state = get();
       
-      // Check if conversation already exists in both mock and state
-      const allConversations = [...mockConversations, ...state.conversations];
-      const existingConversation = allConversations.find(
+      // Check if conversation already exists
+      const existingConversation = state.conversations.find(
         conversation => 
           participants.every(p => conversation.participants.includes(p)) &&
           conversation.participants.length === participants.length
@@ -268,7 +215,7 @@ export const useMessagingStore = create<MessagingState>()(persist(
       
       // Create new conversation
       const newConversation: Conversation = {
-        id: `conv-${Date.now()}`,
+        id: `${participants[0]}-${participants[1]}`,
         participants,
         unreadCount: 0,
       };

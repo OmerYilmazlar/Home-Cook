@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Meal } from '@/types';
-import { mockMeals } from '@/mocks/meals';
+import { mealService } from '@/lib/database';
 import { useAuthStore } from './auth-store';
 
 interface MealsState {
@@ -20,7 +20,7 @@ interface MealsState {
   updateMeal: (id: string, updates: Partial<Meal>) => Promise<void>;
   deleteMeal: (id: string) => Promise<void>;
   decreaseMealQuantity: (mealId: string, quantity: number) => Promise<void>;
-  updateMealRating: (mealId: string, newRating: number) => void;
+  updateMealRating: (mealId: string, newRating: number) => Promise<void>;
   
   setCuisineFilter: (cuisine: string | null) => void;
   setRatingFilter: (rating: number | null) => void;
@@ -28,12 +28,12 @@ interface MealsState {
   clearFilters: () => void;
 }
 
-// Initialize with mock meals and maintain a persistent array
-let persistentMeals = [...mockMeals];
+// Initialize with empty array - will be loaded from Supabase
+let persistentMeals: Meal[] = [];
 
 export const useMealsStore = create<MealsState>((set, get) => ({
-  meals: persistentMeals,
-  filteredMeals: persistentMeals,
+  meals: [],
+  filteredMeals: [],
   selectedMeal: null,
   isLoading: false,
   error: null,
@@ -45,14 +45,13 @@ export const useMealsStore = create<MealsState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Use the persistent meals array
+      // Fetch meals from Supabase
+      const meals = await mealService.getAllMeals();
+      persistentMeals = meals;
       
       set({ 
-        meals: [...persistentMeals], 
-        filteredMeals: [...persistentMeals],
+        meals: [...meals], 
+        filteredMeals: [...meals],
         isLoading: false 
       });
       
@@ -75,10 +74,13 @@ export const useMealsStore = create<MealsState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Try to find in local cache first
+      let meal = persistentMeals.find(m => m.id === id);
       
-      const meal = persistentMeals.find(m => m.id === id);
+      // If not found locally, fetch from Supabase
+      if (!meal) {
+        meal = await mealService.getMealById(id);
+      }
       
       if (!meal) {
         throw new Error('Meal not found');
@@ -97,11 +99,8 @@ export const useMealsStore = create<MealsState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Use persistent meals array instead of mockMeals to include newly created meals
-      const cookMeals = persistentMeals.filter(m => m.cookId === cookId);
+      // Fetch cook's meals from Supabase
+      const cookMeals = await mealService.getMealsByCookId(cookId);
       return cookMeals;
     } catch (error) {
       set({ 
@@ -118,18 +117,10 @@ export const useMealsStore = create<MealsState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
+      console.log('Creating new meal with images:', meal.images);
       
-      const newMeal: Meal = {
-        ...meal,
-        id: `meal-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-      };
-      
-      console.log('Creating new meal with images:', newMeal.images);
-      
-
+      // Create meal in Supabase
+      const newMeal = await mealService.createMeal(meal);
       
       // Add cuisine type to cook's profile if it's new
       const authStore = useAuthStore.getState();
@@ -166,8 +157,6 @@ export const useMealsStore = create<MealsState>((set, get) => ({
           );
         }
         
-
-        
         return {
           meals: updatedMeals,
           filteredMeals: updatedFilteredMeals,
@@ -189,12 +178,12 @@ export const useMealsStore = create<MealsState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Update meal in Supabase
+      const updatedMeal = await mealService.updateMeal(id, updates);
       
       // Update persistent meals array
       persistentMeals = persistentMeals.map(meal => 
-        meal.id === id ? { ...meal, ...updates } : meal
+        meal.id === id ? updatedMeal : meal
       );
       
       // Update cuisine type in cook's profile if it changed
@@ -207,12 +196,12 @@ export const useMealsStore = create<MealsState>((set, get) => ({
         const updatedMeals = [...persistentMeals];
         
         const updatedFilteredMeals = state.filteredMeals.map(meal => 
-          meal.id === id ? { ...meal, ...updates } : meal
+          meal.id === id ? updatedMeal : meal
         );
         
         const updatedSelectedMeal = 
           state.selectedMeal?.id === id 
-            ? { ...state.selectedMeal, ...updates } 
+            ? updatedMeal 
             : state.selectedMeal;
         
         return { 
@@ -236,8 +225,8 @@ export const useMealsStore = create<MealsState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Delete meal from Supabase
+      await mealService.deleteMeal(id);
       
       // Remove from persistent meals array
       persistentMeals = persistentMeals.filter(meal => meal.id !== id);
@@ -260,16 +249,19 @@ export const useMealsStore = create<MealsState>((set, get) => ({
     try {
       console.log('Decreasing meal quantity:', { mealId, quantity });
       
-      // Find and update meal in persistent array
+      // Find meal in persistent array
       const mealIndex = persistentMeals.findIndex(meal => meal.id === mealId);
       if (mealIndex !== -1) {
         const currentQuantity = persistentMeals[mealIndex].availableQuantity;
         const newQuantity = Math.max(0, currentQuantity - quantity);
         
-        persistentMeals[mealIndex] = {
-          ...persistentMeals[mealIndex],
+        // Update meal in Supabase
+        const updatedMeal = await mealService.updateMeal(mealId, {
           availableQuantity: newQuantity
-        };
+        });
+        
+        // Update persistent array
+        persistentMeals[mealIndex] = updatedMeal;
         
         console.log('Meal quantity updated:', {
           mealId,
@@ -283,11 +275,11 @@ export const useMealsStore = create<MealsState>((set, get) => ({
           meals: [...persistentMeals],
           filteredMeals: state.filteredMeals.map(meal => 
             meal.id === mealId 
-              ? { ...meal, availableQuantity: newQuantity }
+              ? updatedMeal
               : meal
           ),
           selectedMeal: state.selectedMeal?.id === mealId 
-            ? { ...state.selectedMeal, availableQuantity: newQuantity }
+            ? updatedMeal
             : state.selectedMeal
         }));
       } else {
@@ -394,53 +386,59 @@ export const useMealsStore = create<MealsState>((set, get) => ({
     });
   },
 
-  updateMealRating: (mealId: string, newRating: number) => {
-    // This is a simplified approach for demo purposes
-    // In a real app, you'd aggregate all ratings and calculate average
-    set(state => {
-      const updatedMeals = state.meals.map(meal => {
-        if (meal.id === mealId) {
-          const currentReviewCount = meal.reviewCount || 0;
-          const currentRating = meal.rating || 0;
-          
-          // Simple average calculation (in reality, you'd track all individual ratings)
-          const newReviewCount = currentReviewCount + 1;
-          const newAverageRating = currentReviewCount === 0 
-            ? newRating 
-            : ((currentRating * currentReviewCount) + newRating) / newReviewCount;
-          
-          return {
-            ...meal,
-            rating: Math.round(newAverageRating * 10) / 10, // Round to 1 decimal
-            reviewCount: newReviewCount
-          };
-        }
-        return meal;
+  updateMealRating: async (mealId: string, newRating: number) => {
+    try {
+      // Find meal in persistent array
+      const meal = persistentMeals.find(m => m.id === mealId);
+      if (!meal) {
+        console.warn('Meal not found for rating update:', mealId);
+        return;
+      }
+      
+      const currentReviewCount = meal.reviewCount || 0;
+      const currentRating = meal.rating || 0;
+      
+      // Calculate new average rating
+      const newReviewCount = currentReviewCount + 1;
+      const newAverageRating = currentReviewCount === 0 
+        ? newRating 
+        : ((currentRating * currentReviewCount) + newRating) / newReviewCount;
+      
+      // Update meal in Supabase
+      const updatedMeal = await mealService.updateMeal(mealId, {
+        rating: Math.round(newAverageRating * 10) / 10, // Round to 1 decimal
+        reviewCount: newReviewCount
       });
-
+      
       // Update persistent meals array
-      persistentMeals = [...updatedMeals];
-
-      return {
-        meals: updatedMeals,
-        filteredMeals: updatedMeals.filter(meal => {
-          // Reapply current filters
-          const { cuisineFilter, ratingFilter, searchQuery } = state;
-          
-          if (cuisineFilter && meal.cuisineType !== cuisineFilter) return false;
-          if (ratingFilter && (meal.rating || 0) < ratingFilter) return false;
-          if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            return (
-              meal.name.toLowerCase().includes(query) ||
-              meal.description.toLowerCase().includes(query) ||
-              meal.cuisineType.toLowerCase().includes(query)
-            );
-          }
-          
-          return true;
-        })
-      };
-    });
+      persistentMeals = persistentMeals.map(m => m.id === mealId ? updatedMeal : m);
+      
+      set(state => {
+        const updatedMeals = [...persistentMeals];
+        
+        return {
+          meals: updatedMeals,
+          filteredMeals: updatedMeals.filter(meal => {
+            // Reapply current filters
+            const { cuisineFilter, ratingFilter, searchQuery } = state;
+            
+            if (cuisineFilter && meal.cuisineType !== cuisineFilter) return false;
+            if (ratingFilter && (meal.rating || 0) < ratingFilter) return false;
+            if (searchQuery) {
+              const query = searchQuery.toLowerCase();
+              return (
+                meal.name.toLowerCase().includes(query) ||
+                meal.description.toLowerCase().includes(query) ||
+                meal.cuisineType.toLowerCase().includes(query)
+              );
+            }
+            
+            return true;
+          })
+        };
+      });
+    } catch (error) {
+      console.error('Failed to update meal rating:', error);
+    }
   },
 }));

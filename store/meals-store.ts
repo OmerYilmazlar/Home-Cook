@@ -75,7 +75,7 @@ export const useMealsStore = create<MealsState>((set, get) => ({
     
     try {
       // Try to find in local cache first
-      let meal = persistentMeals.find(m => m.id === id);
+      let meal: Meal | null = persistentMeals.find(m => m.id === id) || null;
       
       // If not found locally, fetch from Supabase
       if (!meal) {

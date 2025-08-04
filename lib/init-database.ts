@@ -7,8 +7,16 @@ export async function initializeDatabase() {
     // Check if tables exist by trying to query them
     const { error: usersError } = await supabase.from('users').select('id').limit(1);
     if (usersError) {
-      console.error('Users table error:', usersError.message);
-      console.log('Please run the SQL schema from lib/database-schema.sql in your Supabase dashboard first.');
+      console.error('ERROR Users table error:', usersError.message);
+      console.log('\n=== DATABASE SETUP REQUIRED ===');
+      console.log('The database tables do not exist yet.');
+      console.log('Please follow these steps:');
+      console.log('1. Go to your Supabase dashboard: https://encrdntkazmlqwjqaiur.supabase.co');
+      console.log('2. Navigate to the SQL Editor');
+      console.log('3. Copy and paste the SQL schema from lib/database-schema.sql');
+      console.log('4. Run the SQL commands to create the tables');
+      console.log('5. Restart the app');
+      console.log('================================\n');
       return false;
     }
 

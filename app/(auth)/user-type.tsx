@@ -56,6 +56,12 @@ export default function UserTypeScreen() {
     }
     
     try {
+      console.log('🚀 Starting signup process...', {
+        name: params.name,
+        email: params.email,
+        userType
+      });
+      
       await signup(
         {
           name: params.name,
@@ -65,12 +71,16 @@ export default function UserTypeScreen() {
         userType
       );
       
+      console.log('✅ Signup completed successfully');
+      
       // Request location permission after successful signup
       const locationGranted = await requestLocationPermission();
       if (locationGranted || Platform.OS === 'web') {
+        console.log('🏠 Navigating to main app...');
         router.replace('/(tabs)');
       }
     } catch (error) {
+      console.error('❌ Signup failed:', error);
       Alert.alert('Signup Failed', error instanceof Error ? error.message : 'An error occurred');
     }
   };

@@ -7,6 +7,7 @@ import Colors from '@/constants/colors';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
 import { validateEmail } from '@/utils/validation';
+import { userService } from '@/lib/database';
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -86,6 +87,41 @@ export default function SignupScreen() {
     router.push('/login');
   };
   
+  const handleTestSignup = async () => {
+    console.log('🧪 Testing signup with sample data...');
+    
+    try {
+      const testUser = {
+        name: 'Test User',
+        email: `test-${Date.now()}@example.com`,
+        password: 'test123'
+      };
+      
+      console.log('🧪 Creating test user:', testUser);
+      
+      // Test direct database insertion
+      const createdUser = await userService.createUser({
+        name: testUser.name,
+        email: testUser.email
+      }, 'customer');
+      
+      console.log('✅ Test user created successfully:', createdUser);
+      
+      // Now test the signup flow
+      await signup({
+        name: testUser.name,
+        email: testUser.email
+      }, testUser.password, 'customer');
+      
+      Alert.alert('Test Success', `User created and logged in: ${createdUser.name}`);
+      router.replace('/(tabs)');
+      
+    } catch (error) {
+      console.error('❌ Test signup failed:', error);
+      Alert.alert('Test Failed', error instanceof Error ? error.message : 'Unknown error');
+    }
+  };
+  
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -146,6 +182,16 @@ export default function SignupScreen() {
           style={styles.button}
           fullWidth
         />
+        
+        <Button
+          title="🧪 Test Signup"
+          onPress={handleTestSignup}
+          variant="secondary"
+          loading={isLoading}
+          disabled={isLoading}
+          style={[styles.button, styles.testButton]}
+          fullWidth
+        />
       </View>
       
       <View style={styles.footer}>
@@ -187,6 +233,10 @@ const styles = StyleSheet.create({
   button: {
     marginTop: 16,
     height: 50,
+  },
+  testButton: {
+    marginTop: 8,
+    backgroundColor: Colors.secondary,
   },
   footer: {
     flexDirection: 'row',

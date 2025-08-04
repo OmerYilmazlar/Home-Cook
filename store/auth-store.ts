@@ -67,22 +67,43 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         set({ isLoading: true, error: null });
         
         try {
+          console.log('📝 Auth Store: Starting signup process...', {
+            email: userData.email,
+            name: userData.name,
+            userType
+          });
+          
           // Check if email already exists
+          console.log('🔍 Auth Store: Checking if email exists...');
           const existingUser = await userService.getUserByEmail(userData.email || '');
           
           if (existingUser) {
+            console.log('⚠️ Auth Store: Email already exists');
             throw new Error('Email already in use');
           }
+          
+          console.log('✅ Auth Store: Email is available, creating user...');
           
           // Create new user in Supabase
           const newUser = await userService.createUser(userData, userType);
           
+          console.log('✅ Auth Store: User created successfully:', {
+            id: newUser.id,
+            name: newUser.name,
+            email: newUser.email,
+            userType: newUser.userType
+          });
+          
           set({ user: newUser, isAuthenticated: true, isLoading: false });
+          
+          console.log('✅ Auth Store: User logged in successfully');
         } catch (error) {
+          console.error('❌ Auth Store: Signup failed:', error);
           set({ 
             error: error instanceof Error ? error.message : 'An error occurred', 
             isLoading: false 
           });
+          throw error; // Re-throw so the UI can handle it
         }
       },
       

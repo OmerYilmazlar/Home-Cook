@@ -152,6 +152,8 @@ export const userService = {
     // Generate a unique ID for the user
     const userId = `${userType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
+    console.log('💾 Database: Creating user with ID:', userId);
+    
     const dbUser = {
       id: userId,
       name: userData.name || '',
@@ -170,14 +172,24 @@ export const userService = {
       favorites: userType === 'customer' ? [] : null
     };
 
+    console.log('💾 Database: Inserting user data:', dbUser);
+
     const { data, error } = await supabase
       .from('users')
       .insert(dbUser)
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
-    return convertDbUserToAppUser(data);
+    if (error) {
+      console.error('❌ Database: User creation failed:', error);
+      throw new Error(error.message);
+    }
+    
+    console.log('✅ Database: User created successfully:', data);
+    const convertedUser = convertDbUserToAppUser(data);
+    console.log('✅ Database: Converted user:', convertedUser);
+    
+    return convertedUser;
   },
 
   async updateUser(userId: string, updates: Partial<Cook | Customer>): Promise<Cook | Customer> {

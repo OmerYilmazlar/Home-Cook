@@ -15,7 +15,7 @@ interface MessagingState {
   fetchConversations: (userId: string) => Promise<void>;
   fetchMessages: (conversationId: string) => Promise<void>;
   sendMessage: (message: Omit<Message, 'id' | 'createdAt' | 'read'>) => Promise<void>;
-  markAsRead: (messageIds: string[]) => Promise<void>;
+  markAsRead: (userId: string, otherUserId: string) => Promise<void>;
   createConversation: (participants: string[]) => Promise<string>;
   initializeMessages: () => void;
 }

@@ -349,22 +349,26 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
             : state.selectedReservation;
         
         // Update reservation in Supabase
-        try {
-          const updates: any = { status };
-          if (status === 'ready_for_pickup' || status === 'completed') {
-            updates.paymentStatus = 'paid';
-          }
-          await reservationService.updateReservation(id, updates);
+        const updateReservationInDb = async () => {
+          try {
+            const updates: any = { status };
+            if (status === 'ready_for_pickup' || status === 'completed') {
+              updates.paymentStatus = 'paid';
+            }
+            await reservationService.updateReservation(id, updates);
           
-          console.log('Updated reservation in Supabase:', {
-            id,
-            newStatus: status,
-            updates
-          });
-        } catch (dbError) {
-          console.error('Failed to update reservation in Supabase:', dbError);
-          // Continue with local state update even if DB update fails
-        }
+            console.log('Updated reservation in Supabase:', {
+              id,
+              newStatus: status,
+              updates
+            });
+          } catch (dbError) {
+            console.error('Failed to update reservation in Supabase:', dbError);
+            // Continue with local state update even if DB update fails
+          }
+        };
+        
+        updateReservationInDb();
         
         // Handle meal quantity decrease when order is confirmed
         if (status === 'confirmed') {
@@ -401,8 +405,7 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
         
         console.log('Status update complete:', {
           reservationId: id,
-          newStatus: status,
-          updatedInMockData: mockReservationIndex !== -1
+          newStatus: status
         });
         
         return { 

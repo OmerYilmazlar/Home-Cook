@@ -178,11 +178,11 @@ export const userService = {
 
   async updateUser(userId: string, updates: Partial<Cook | Customer>): Promise<Cook | Customer> {
     const dbUpdates = convertAppUserToDbUser(updates as Cook | Customer);
-    delete dbUpdates.id; // Don't update ID
+    const { id, ...updatesWithoutId } = dbUpdates; // Don't update ID
 
     const { data, error } = await supabase
       .from('users')
-      .update({ ...dbUpdates, updated_at: new Date().toISOString() })
+      .update({ ...updatesWithoutId, updated_at: new Date().toISOString() })
       .eq('id', userId)
       .select()
       .single();
@@ -241,11 +241,11 @@ export const mealService = {
       ...convertAppMealToDbMeal(meal as Meal),
       created_at: new Date().toISOString()
     };
-    delete dbMeal.id;
+    const { id, ...mealWithoutId } = dbMeal;
 
     const { data, error } = await supabase
       .from('meals')
-      .insert(dbMeal)
+      .insert(mealWithoutId)
       .select()
       .single();
 
@@ -255,12 +255,11 @@ export const mealService = {
 
   async updateMeal(mealId: string, updates: Partial<Meal>): Promise<Meal> {
     const dbUpdates = convertAppMealToDbMeal(updates as Meal);
-    delete dbUpdates.id;
-    delete dbUpdates.created_at;
+    const { id, created_at, ...updatesWithoutIdAndDate } = dbUpdates;
 
     const { data, error } = await supabase
       .from('meals')
-      .update({ ...dbUpdates, updated_at: new Date().toISOString() })
+      .update({ ...updatesWithoutIdAndDate, updated_at: new Date().toISOString() })
       .eq('id', mealId)
       .select()
       .single();

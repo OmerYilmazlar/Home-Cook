@@ -8,6 +8,20 @@ export async function initializeDatabase() {
     const { error: usersError } = await supabase.from('users').select('id').limit(1);
     if (usersError) {
       console.error('ERROR Users table error:', usersError.message);
+      
+      if (usersError.message.includes('row-level security policy')) {
+        console.log('\n=== RLS POLICY UPDATE REQUIRED ===');
+        console.log('The signup is failing due to Row Level Security policies.');
+        console.log('Please follow these steps:');
+        console.log('1. Go to your Supabase dashboard: https://encrdntkazmlqwjqaiur.supabase.co');
+        console.log('2. Navigate to the SQL Editor');
+        console.log('3. Copy and paste the SQL from lib/update-rls-policies.sql');
+        console.log('4. Run the SQL commands to update the RLS policies');
+        console.log('5. Try signing up again');
+        console.log('===================================\n');
+        return false;
+      }
+      
       console.log('\n=== DATABASE SETUP REQUIRED ===');
       console.log('The database tables do not exist yet.');
       console.log('Please follow these steps:');

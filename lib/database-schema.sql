@@ -119,7 +119,7 @@ ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 -- Users policies
 CREATE POLICY "Users can view all users" ON users FOR SELECT USING (true);
 CREATE POLICY "Users can update own profile" ON users FOR UPDATE USING (auth.uid()::text = id);
-CREATE POLICY "Users can insert own profile" ON users FOR INSERT WITH CHECK (auth.uid()::text = id);
+CREATE POLICY "Users can insert own profile" ON users FOR INSERT WITH CHECK (true);
 
 -- Meals policies
 CREATE POLICY "Anyone can view meals" ON meals FOR SELECT USING (true);

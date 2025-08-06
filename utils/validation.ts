@@ -1,20 +1,48 @@
 // Phone number validation utilities
-export const validatePhoneNumber = (phoneNumber: string): boolean => {
-  // Remove all non-digit characters
+export const validatePhoneNumber = (phoneNumber: string, isRequired: boolean = true): boolean => {
+  // If phone is not required and empty, it's valid
+  if (!isRequired && (!phoneNumber || phoneNumber.trim().length === 0)) {
+    return true;
+  }
+  
+  if (!phoneNumber || phoneNumber.trim().length === 0) return false;
+  
+  // Remove all non-digit characters to check the core number
   const cleaned = phoneNumber.replace(/\D/g, '');
   
-  // Check if it's exactly 10 digits for US numbers
+  // Must have at least 7 digits (minimum for any phone number)
+  // and at most 15 digits (international standard)
+  if (cleaned.length < 7 || cleaned.length > 15) {
+    return false;
+  }
+  
+  // For UK numbers specifically (since user mentioned UK number)
+  if (phoneNumber.includes('+44') || phoneNumber.startsWith('07')) {
+    // UK mobile numbers: +44 7xxx xxx xxx or 07xxx xxx xxx
+    const ukCleaned = cleaned.replace(/^44/, '').replace(/^0/, '');
+    if (ukCleaned.startsWith('7') && ukCleaned.length === 10) {
+      return true;
+    }
+    // UK landline numbers are also valid
+    if (ukCleaned.length >= 10 && ukCleaned.length <= 11) {
+      return true;
+    }
+  }
+  
+  // For US/Canada numbers (10-11 digits)
   if (cleaned.length === 10) {
-    // Must start with area code (not 0 or 1)
+    // US format: area code + 7 digits
     return /^[2-9]\d{2}[2-9]\d{2}\d{4}$/.test(cleaned);
   }
   
-  // For international numbers, 11-15 digits
-  if (cleaned.length >= 11 && cleaned.length <= 15) {
-    return /^[1-9]\d{10,14}$/.test(cleaned);
+  if (cleaned.length === 11) {
+    // North America with country code: 1 + area code + 7 digits
+    return /^1[2-9]\d{2}[2-9]\d{2}\d{4}$/.test(cleaned);
   }
   
-  return false;
+  // For other international numbers (7-15 digits), basic validation
+  // Must start with a digit (not 0) and contain only digits
+  return /^[1-9]\d{6,14}$/.test(cleaned);
 };
 
 // Format phone number as user types
@@ -24,6 +52,11 @@ export const formatPhoneNumber = (phoneNumber: string, currentValue: string): st
   // Strict limit: max 15 digits, don't allow more input
   if (cleaned.length > 15) {
     return currentValue; // Return previous value if too long
+  }
+  
+  // For short numbers, just return as is
+  if (cleaned.length <= 3) {
+    return cleaned;
   }
   
   // Format US phone numbers (10 digits)
@@ -36,82 +69,195 @@ export const formatPhoneNumber = (phoneNumber: string, currentValue: string): st
     }
   }
   
-  // For international numbers (11-15 digits), format with country code
+  // For international numbers (11+ digits), format with country code
   if (cleaned.length > 10) {
+    // Simple international format: +X XXX XXX XXXX
     const countryCode = cleaned.substring(0, cleaned.length - 10);
-    const areaCode = cleaned.substring(cleaned.length - 10, cleaned.length - 7);
-    const firstPart = cleaned.substring(cleaned.length - 7, cleaned.length - 4);
-    const lastPart = cleaned.substring(cleaned.length - 4);
+    const rest = cleaned.substring(cleaned.length - 10);
     
-    if (areaCode && firstPart && lastPart) {
-      return `+${countryCode} (${areaCode}) ${firstPart}-${lastPart}`;
-    } else if (areaCode && firstPart) {
-      return `+${countryCode} (${areaCode}) ${firstPart}`;
-    } else if (areaCode) {
-      return `+${countryCode} (${areaCode}`;
+    if (rest.length >= 10) {
+      const areaCode = rest.substring(0, 3);
+      const firstPart = rest.substring(3, 6);
+      const lastPart = rest.substring(6);
+      return `+${countryCode} ${areaCode} ${firstPart} ${lastPart}`;
+    } else if (rest.length >= 6) {
+      const areaCode = rest.substring(0, 3);
+      const firstPart = rest.substring(3);
+      return `+${countryCode} ${areaCode} ${firstPart}`;
+    } else if (rest.length >= 3) {
+      const areaCode = rest.substring(0, 3);
+      return `+${countryCode} ${areaCode}`;
     } else {
-      return `+${countryCode}`;
+      return `+${countryCode} ${rest}`;
     }
   }
   
   return cleaned;
 };
 
-// Address validation
-export const validateAddress = (address: string): boolean => {
-  if (address.length < 10) return false;
+// Bio validation with character limit
+export const validateBio = (bio: string): { isValid: boolean; charCount: number; error?: string } => {
+  if (!bio || bio.trim().length === 0) {
+    return { isValid: false, charCount: 0, error: 'Bio is required' };
+  }
   
-  // Must have at least a number, street name, and city
-  const hasNumber = /\d/.test(address);
-  const hasStreetType = /\b(street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|way|place|pl|court|ct|circle|cir)\b/i.test(address);
-  const hasComma = address.includes(',');
+  const charCount = bio.length;
   
-  // Should have at least 2 parts separated by comma (street, city)
-  const parts = address.split(',').map(part => part.trim()).filter(part => part.length > 0);
-  const hasMultipleParts = parts.length >= 2;
+  if (charCount > 600) {
+    return { 
+      isValid: false, 
+      charCount, 
+      error: `Bio must be 600 characters or less (currently ${charCount} characters)` 
+    };
+  }
   
-  // Check if it looks like a real address format
-  const addressPattern = /^\d+\s+[a-zA-Z\s]+(street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|way|place|pl|court|ct|circle|cir)/i;
-  const startsWithNumber = /^\d+\s/.test(address);
+  if (bio.trim().length < 10) {
+    return { 
+      isValid: false, 
+      charCount, 
+      error: 'Bio must be at least 10 characters long' 
+    };
+  }
   
-  return hasNumber && hasComma && hasMultipleParts && startsWithNumber && (hasStreetType || addressPattern.test(address));
+  return { isValid: true, charCount };
 };
 
-// Mock address suggestions (in real app, use Google Places API)
-export const getAddressSuggestions = (query: string): string[] => {
-  if (query.length < 3) return [];
+// Address validation - More user-friendly
+export const validateAddress = (address: string): boolean => {
+  if (address.length < 5) return false;
   
+  // More flexible validation - just need some basic components
+  const hasNumber = /\d/.test(address);
+  const hasText = /[a-zA-Z]/.test(address);
+  const hasMinimumLength = address.trim().length >= 5;
+  
+  // Split by comma or space to check for multiple parts
+  const parts = address.split(/[,\s]+/).filter(part => part.length > 0);
+  const hasMultipleParts = parts.length >= 2;
+  
+  // Accept if it has numbers, text, and looks like an address
+  return hasNumber && hasText && hasMinimumLength && hasMultipleParts;
+};
+
+// Google Places API configuration
+const GOOGLE_PLACES_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'YOUR_API_KEY_HERE';
+
+// Google Places API address suggestions
+export const getAddressSuggestions = async (query: string): Promise<string[]> => {
+  if (query.length < 2) return [];
+  
+  try {
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${GOOGLE_PLACES_API_KEY}&types=address`
+    );
+    
+    if (!response.ok) {
+      console.warn('Google Places API request failed, falling back to mock data');
+      return getMockAddressSuggestions(query);
+    }
+    
+    const data = await response.json();
+    
+    if (data.status === 'OK' && data.predictions) {
+      return data.predictions.map((prediction: any) => prediction.description).slice(0, 5);
+    } else {
+      console.warn('Google Places API returned no results, falling back to mock data');
+      return getMockAddressSuggestions(query);
+    }
+  } catch (error) {
+    console.warn('Error fetching address suggestions:', error);
+    return getMockAddressSuggestions(query);
+  }
+};
+
+// Enhanced address validation with Google Places
+export const validateAddressWithGoogle = async (address: string): Promise<{
+  isValid: boolean;
+  suggestion?: string;
+  coordinates?: { lat: number; lng: number };
+  error?: string;
+}> => {
+  if (!address || address.trim().length < 5) {
+    return { isValid: false, error: 'Address must be at least 5 characters long' };
+  }
+  
+  try {
+    // First, try to geocode the address to verify it exists
+    const geocodeResponse = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_PLACES_API_KEY}`
+    );
+    
+    if (!geocodeResponse.ok) {
+      console.warn('Google Geocoding API request failed, using basic validation');
+      return { isValid: validateAddress(address) };
+    }
+    
+    const geocodeData = await geocodeResponse.json();
+    
+    if (geocodeData.status === 'OK' && geocodeData.results.length > 0) {
+      const result = geocodeData.results[0];
+      return {
+        isValid: true,
+        suggestion: result.formatted_address,
+        coordinates: {
+          lat: result.geometry.location.lat,
+          lng: result.geometry.location.lng
+        }
+      };
+    } else if (geocodeData.status === 'ZERO_RESULTS') {
+      return { 
+        isValid: false, 
+        error: 'Address not found. Please check the address and try again.' 
+      };
+    } else {
+      console.warn('Google Geocoding API error:', geocodeData.status);
+      return { isValid: validateAddress(address) };
+    }
+  } catch (error) {
+    console.warn('Error validating address with Google:', error);
+    return { isValid: validateAddress(address) };
+  }
+};
+
+// Fallback mock address suggestions
+const getMockAddressSuggestions = (query: string): string[] => {
   const mockAddresses = [
-    '123 Main Street, New York, NY 10001',
-    '456 Oak Avenue, Los Angeles, CA 90210',
-    '789 Pine Road, Chicago, IL 60601',
-    '321 Elm Drive, Houston, TX 77001',
-    '654 Maple Lane, Phoenix, AZ 85001',
-    '987 Cedar Boulevard, Philadelphia, PA 19101',
-    '147 Birch Way, San Antonio, TX 78201',
-    '258 Willow Court, San Diego, CA 92101',
-    '369 Spruce Place, Dallas, TX 75201',
-    '741 Ash Street, San Jose, CA 95101',
-    '852 Walnut Drive, Austin, TX 78701',
-    '963 Cherry Lane, Jacksonville, FL 32201',
-    '159 Peach Street, Fort Worth, TX 76101',
-    '357 Apple Avenue, Columbus, OH 43201',
-    '468 Orange Road, Charlotte, NC 28201',
-    '555 Broadway Street, Seattle, WA 98101',
-    '777 Market Street, San Francisco, CA 94102',
-    '888 State Street, Boston, MA 02101',
-    '999 Fifth Avenue, Miami, FL 33101',
-    '111 Park Avenue, Denver, CO 80201'
+    '123 Main Street, New York, NY',
+    '456 Oak Avenue, Los Angeles, CA',
+    '789 Pine Road, Chicago, IL',
+    '321 Elm Drive, Houston, TX',
+    '654 Maple Lane, Phoenix, AZ',
+    '987 Cedar Boulevard, Philadelphia, PA',
+    '147 Birch Way, San Antonio, TX',
+    '258 Willow Court, San Diego, CA',
+    '369 Spruce Place, Dallas, TX',
+    '741 Ash Street, San Jose, CA',
+    '852 Walnut Drive, Austin, TX',
+    '963 Cherry Lane, Jacksonville, FL',
+    '159 Peach Street, Fort Worth, TX',
+    '357 Apple Avenue, Columbus, OH',
+    '468 Orange Road, Charlotte, NC',
+    '555 Broadway Street, Seattle, WA',
+    '777 Market Street, San Francisco, CA',
+    '888 State Street, Boston, MA',
+    '999 Fifth Avenue, Miami, FL',
+    '111 Park Avenue, Denver, CO'
   ];
   
-  // Better filtering: match beginning of words or full query
+  // More flexible filtering
   const queryLower = query.toLowerCase();
-  return mockAddresses.filter(addr => {
+  const filtered = mockAddresses.filter(addr => {
     const addrLower = addr.toLowerCase();
-    // Match if query appears at start of address or after a space/comma
     return addrLower.includes(queryLower) || 
            addrLower.split(/[\s,]+/).some(word => word.startsWith(queryLower));
   }).slice(0, 5);
+  
+  // If no matches and user has typed something reasonable, suggest a template
+  if (filtered.length === 0 && query.length >= 3) {
+    return [`${query}, City, State`];
+  }
+  
+  return filtered;
 };
 
 // Email validation

@@ -88,7 +88,7 @@ export default function CookProfileScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Image
-          source={{ uri: cook.avatar }}
+          source={cook.avatar ? { uri: cook.avatar } : require('@/assets/images/icon.png')}
           style={styles.avatar}
           contentFit="cover"
         />

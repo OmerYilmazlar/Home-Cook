@@ -8,8 +8,20 @@ import Button from '@/components/Button';
 
 export default function UserTypeScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ name: string; email: string; password: string }>();
+  const params = useLocalSearchParams<{ 
+    name: string; 
+    email: string; 
+    password: string; 
+    testUserType?: 'cook' | 'customer' 
+  }>();
   const { signup, isLoading } = useAuthStore();
+  
+  // Auto-signup for test users
+  React.useEffect(() => {
+    if (params.testUserType) {
+      handleSelectUserType(params.testUserType);
+    }
+  }, [params.testUserType]);
   
   const requestLocationPermission = async (): Promise<boolean> => {
     if (Platform.OS === 'web') {
@@ -76,8 +88,8 @@ export default function UserTypeScreen() {
       // Request location permission after successful signup
       const locationGranted = await requestLocationPermission();
       if (locationGranted || Platform.OS === 'web') {
-        console.log('🏠 Navigating to main app...');
-        router.replace('/(tabs)');
+        console.log('🏠 Navigating to edit profile...');
+        router.replace('/edit-profile');
       }
     } catch (error) {
       console.error('❌ Signup failed:', error);

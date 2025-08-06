@@ -19,6 +19,7 @@ interface AuthState {
   updateUserRating: (userId: string, newRating: number) => Promise<void>;
   updateCustomerReviewCount: (customerId: string) => Promise<void>;
   initialize: () => Promise<void>;
+  clearError: () => void;
 }
 
 export const useAuthStore = create<AuthState>()((set, get) => ({
@@ -130,6 +131,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       
 
       updateProfile: async (userData) => {
+        console.log('🔍 Auth Store: updateProfile called with:', userData);
         set({ isLoading: true, error: null });
         
         try {
@@ -138,14 +140,53 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
             throw new Error('User not authenticated');
           }
           
+          console.log('👤 Auth Store: Current user:', currentUser.id, currentUser.name);
+          console.log('📝 Auth Store: Updating user with data:', userData);
+          
+          // Check if email is being changed
+          const emailChanged = userData.email && userData.email !== currentUser.email;
+          
+          // If email is being changed, check if the new email is already taken
+          if (emailChanged && userData.email) {
+            console.log('📧 Auth Store: Email changed - checking if new email is available...');
+            const existingUser = await userService.getUserByEmail(userData.email);
+            if (existingUser && existingUser.id !== currentUser.id) {
+              throw new Error('This email address is already in use by another account');
+            }
+          }
+          
+          // Create the updated user object more carefully
+          const updatedUserData = {
+            ...currentUser,
+            ...userData,
+            id: currentUser.id, // Ensure ID stays the same
+            userType: currentUser.userType, // Ensure userType stays the same
+            // Reset email verification if email changed
+            ...(emailChanged && {
+              isEmailVerified: false,
+              emailVerifiedAt: undefined
+            })
+          };
+          
+          if (emailChanged) {
+            console.log('📧 Auth Store: Email changed - resetting email verification status');
+          }
+          
+          console.log('🔄 Auth Store: Final user data to send:', updatedUserData);
+          
           // Update user in Supabase
-          const updatedUser = await userService.updateUser(currentUser.id, { ...currentUser, ...userData });
+          const updatedUser = await userService.updateUser(currentUser.id, updatedUserData);
+          console.log('✅ Auth Store: User updated in database:', updatedUser);
+          
           set({ user: updatedUser, isLoading: false });
+          console.log('✅ Auth Store: Store state updated successfully');
         } catch (error) {
+          console.error('❌ Auth Store: updateProfile failed:', error);
           set({ 
             error: error instanceof Error ? error.message : 'An error occurred', 
             isLoading: false 
           });
+          throw error; // Re-throw so the UI can handle it
         }
       },
       
@@ -241,5 +282,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         } catch (error) {
           console.error('Failed to update customer review count:', error);
         }
+      },
+
+      clearError: () => {
+        set({ error: null });
       },
 }));

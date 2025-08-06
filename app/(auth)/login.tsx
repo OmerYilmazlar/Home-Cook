@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Alert, Platform } from 'react-native';
-import { useRouter } from 'expo-router';
+import { StyleSheet, View, Text, TouchableOpacity, Alert, Platform, KeyboardAvoidingView, ScrollView } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Mail, Lock } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import { useAuthStore } from '@/store/auth-store';
@@ -11,12 +11,19 @@ import { validateEmail } from '@/utils/validation';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, isLoading, error } = useAuthStore();
+  const { login, isLoading, error, clearError } = useAuthStore();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+
+  // Clear error when screen gains focus
+  useFocusEffect(
+    React.useCallback(() => {
+      clearError();
+    }, [clearError])
+  );
   
   const validateForm = () => {
     let isValid = true;
@@ -102,32 +109,19 @@ export default function LoginScreen() {
     router.push('/signup');
   };
   
-  // For demo purposes, provide quick login options
-  const handleQuickLogin = async (userType: 'cook' | 'customer') => {
-    let demoEmail = '';
-    
-    if (userType === 'cook') {
-      demoEmail = 'maria@example.com'; // Maria Rodriguez
-    } else {
-      demoEmail = 'john@example.com'; // John Smith
-    }
-    
-    try {
-      const loginSuccess = await login(demoEmail, 'password');
-      if (loginSuccess) {
-        // Request location permission after successful login
-        const locationGranted = await requestLocationPermission();
-        if (locationGranted || Platform.OS === 'web') {
-          router.replace('/(tabs)');
-        }
-      }
-    } catch (error) {
-      Alert.alert('Login Failed', error instanceof Error ? error.message : 'An error occurred');
-    }
-  };
-  
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.innerContainer}>
       <View style={styles.header}>
         <Text style={styles.title}>Welcome Back</Text>
         <Text style={styles.subtitle}>Log in to your HomeCook account</Text>
@@ -169,33 +163,15 @@ export default function LoginScreen() {
         />
       </View>
       
-      <View style={styles.demoContainer}>
-        <Text style={styles.demoTitle}>Quick Demo Login:</Text>
-        <View style={styles.demoButtons}>
-          <Button
-            title="Login as Cook"
-            onPress={() => handleQuickLogin('cook')}
-            variant="secondary"
-            size="small"
-            style={styles.demoButton}
-          />
-          <Button
-            title="Login as Customer"
-            onPress={() => handleQuickLogin('customer')}
-            variant="secondary"
-            size="small"
-            style={styles.demoButton}
-          />
-        </View>
-      </View>
-      
       <View style={styles.footer}>
         <Text style={styles.footerText}>Don't have an account?</Text>
         <TouchableOpacity onPress={handleSignup}>
           <Text style={styles.footerLink}>Sign Up</Text>
         </TouchableOpacity>
       </View>
-    </View>
+      </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -203,7 +179,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.white,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  contentContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
     padding: 24,
+  },
+  innerContainer: {
+    flex: 1,
   },
   header: {
     marginBottom: 32,

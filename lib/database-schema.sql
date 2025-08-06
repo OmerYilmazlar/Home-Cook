@@ -21,8 +21,24 @@ CREATE TABLE IF NOT EXISTS users (
   cuisine_types TEXT[],
   available_for_pickup BOOLEAN DEFAULT false,
   favorites TEXT[] DEFAULT '{}',
+  email_verified BOOLEAN DEFAULT false,
+  email_verified_at TIMESTAMP WITH TIME ZONE,
+  phone_verified BOOLEAN DEFAULT false,
+  phone_verified_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Verification requests table
+CREATE TABLE IF NOT EXISTS verification_requests (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('email', 'phone')),
+  contact TEXT NOT NULL, -- email address or phone number
+  code TEXT NOT NULL,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  verified BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Meals table

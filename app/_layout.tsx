@@ -14,6 +14,7 @@ import { useAuthStore } from "@/store/auth-store";
 import NotificationBanner from "@/components/NotificationBanner";
 import LocationPermissionModal from "@/components/LocationPermissionModal";
 import { Platform } from "react-native";
+import { initializeEmailJS } from "@/lib/verification";
 
 export const unstable_settings = {
   initialRouteName: "(auth)",
@@ -104,6 +105,8 @@ function ThemedStack() {
       initializeNotifications();
       // Initialize auth store which will set up the database
       useAuthStore.getState().initialize();
+      // Initialize EmailJS for email verification
+      initializeEmailJS();
     }
   }, [isLoaded, initializeNotifications]);
   

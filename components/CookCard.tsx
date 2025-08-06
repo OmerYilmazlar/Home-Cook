@@ -7,6 +7,7 @@ import { Cook } from '@/types';
 import Colors from '@/constants/colors';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { useAuthStore } from '@/store/auth-store';
+import { VerificationBadge } from '@/components/VerificationBadge';
 
 interface CookCardProps {
   cook: Cook;
@@ -39,7 +40,7 @@ export default function CookCard({ cook, showFavoriteButton = true }: CookCardPr
     <Pressable style={styles.container} onPress={handlePress}>
       <View style={styles.header}>
         <Image
-          source={{ uri: cook.avatar }}
+          source={cook.avatar ? { uri: cook.avatar } : require('@/assets/images/icon.png')}
           style={styles.avatar}
           contentFit="cover"
           transition={200}
@@ -69,6 +70,15 @@ export default function CookCard({ cook, showFavoriteButton = true }: CookCardPr
               {cook.rating?.toFixed(1) || '0.0'} ({cook.reviewCount || 0})
             </Text>
           </View>
+
+          {/* Verification Badge */}
+          <VerificationBadge
+            isEmailVerified={cook.isEmailVerified || false}
+            isPhoneVerified={cook.isPhoneVerified || false}
+            hasPhone={!!cook.phone}
+            size="small"
+            style={styles.verificationBadge}
+          />
         </View>
       </View>
       
@@ -194,5 +204,8 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 14,
     color: Colors.subtext,
+  },
+  verificationBadge: {
+    marginTop: 4,
   },
 });

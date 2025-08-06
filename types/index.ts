@@ -15,6 +15,11 @@ export interface User {
   bio?: string;
   rating?: number;
   reviewCount?: number;
+  // Verification fields
+  isEmailVerified?: boolean;
+  isPhoneVerified?: boolean;
+  emailVerifiedAt?: Date;
+  phoneVerifiedAt?: Date;
 }
 
 export interface Cook extends User {

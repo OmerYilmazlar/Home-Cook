@@ -93,7 +93,7 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
       const customerReservations = await reservationService.getReservationsByCustomerId(customerId);
       
       console.log('Found customer reservations:', customerReservations.length);
-      console.log('Reservation statuses:', customerReservations.map(r => ({ id: r.id, status: r.status })));
+      console.log('Reservation statuses:', customerReservations.map((r: Reservation) => ({ id: r.id, status: r.status })));
       
       set({ customerReservations, isLoading: false });
     } catch (error) {
@@ -115,7 +115,7 @@ export const useReservationsStore = create<ReservationsState>((set, get) => ({
       const cookReservations = await reservationService.getReservationsByCookId(cookId);
       
       console.log('Found cook reservations:', cookReservations.length);
-      console.log('Cook reservation statuses:', cookReservations.map(r => ({ id: r.id, status: r.status })));
+      console.log('Cook reservation statuses:', cookReservations.map((r: Reservation) => ({ id: r.id, status: r.status })));
       
       set({ cookReservations, isLoading: false });
     } catch (error) {

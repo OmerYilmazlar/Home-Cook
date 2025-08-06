@@ -14,10 +14,17 @@ function convertDbUserToAppUser(dbUser: any): Cook | Customer {
       latitude: dbUser.latitude,
       longitude: dbUser.longitude,
       address: dbUser.address || ''
+    } : dbUser.address ? {
+      address: dbUser.address
     } : undefined,
     bio: dbUser.bio,
     rating: dbUser.rating,
-    reviewCount: dbUser.review_count
+    reviewCount: dbUser.review_count,
+    // Add verification fields
+    isEmailVerified: dbUser.email_verified || false,
+    isPhoneVerified: dbUser.phone_verified || false,
+    emailVerifiedAt: dbUser.email_verified_at ? new Date(dbUser.email_verified_at) : undefined,
+    phoneVerifiedAt: dbUser.phone_verified_at ? new Date(dbUser.phone_verified_at) : undefined,
   };
 
   if (dbUser.user_type === 'cook') {
@@ -66,62 +73,38 @@ function convertDbMealToAppMeal(dbMeal: any): Meal {
     description: dbMeal.description,
     price: dbMeal.price,
     cuisineType: dbMeal.cuisine_type,
-    images: dbMeal.images,
-    ingredients: dbMeal.ingredients,
-    allergens: dbMeal.allergens,
-    availableQuantity: dbMeal.available_quantity,
-    pickupTimes: dbMeal.pickup_times,
+    images: dbMeal.images || [],
+    ingredients: dbMeal.ingredients || [],
+    allergens: dbMeal.allergens || [],
+    availableQuantity: dbMeal.available_quantity || 0,
+    pickupTimes: dbMeal.pickup_times || [],
     rating: dbMeal.rating,
-    reviewCount: dbMeal.review_count,
+    reviewCount: dbMeal.review_count || 0,
     createdAt: dbMeal.created_at
   };
 }
 
 // Helper function to convert app meal to database format
-function convertAppMealToDbMeal(meal: Meal) {
-  return {
-    id: meal.id,
-    cook_id: meal.cookId,
-    name: meal.name,
-    description: meal.description,
-    price: meal.price,
-    cuisine_type: meal.cuisineType,
-    images: meal.images,
-    ingredients: meal.ingredients,
-    allergens: meal.allergens,
-    available_quantity: meal.availableQuantity,
-    pickup_times: meal.pickupTimes,
-    rating: meal.rating,
-    review_count: meal.reviewCount,
-    created_at: meal.createdAt
-  };
-}
-
-// Helper function to convert database reservation to app reservation type
-function convertDbReservationToAppReservation(dbReservation: any): Reservation {
-  return {
-    id: dbReservation.id,
-    mealId: dbReservation.meal_id,
-    customerId: dbReservation.customer_id,
-    cookId: dbReservation.cook_id,
-    status: dbReservation.status,
-    quantity: dbReservation.quantity,
-    totalPrice: dbReservation.total_price,
-    totalAmount: dbReservation.total_price,
-    pickupTime: dbReservation.pickup_time,
-    createdAt: dbReservation.created_at,
-    paymentConfirmed: dbReservation.payment_confirmed,
-    paymentId: dbReservation.payment_id,
-    paymentStatus: dbReservation.payment_status,
-    rating: dbReservation.meal_rating && dbReservation.cook_rating ? {
-      mealRating: dbReservation.meal_rating,
-      cookRating: dbReservation.cook_rating,
-      reviewText: dbReservation.review_text || '',
-      customerId: dbReservation.customer_id,
-      customerName: '', // Will be populated when needed
-      createdAt: dbReservation.updated_at
-    } : undefined
-  };
+function convertAppMealToDbMeal(meal: Partial<Meal>) {
+  const dbMeal: any = {};
+  
+  // Only include defined values to avoid undefined issues
+  if (meal.id !== undefined) dbMeal.id = meal.id;
+  if (meal.cookId !== undefined) dbMeal.cook_id = meal.cookId;
+  if (meal.name !== undefined) dbMeal.name = meal.name;
+  if (meal.description !== undefined) dbMeal.description = meal.description;
+  if (meal.price !== undefined) dbMeal.price = meal.price;
+  if (meal.cuisineType !== undefined) dbMeal.cuisine_type = meal.cuisineType;
+  if (meal.images !== undefined) dbMeal.images = meal.images;
+  if (meal.ingredients !== undefined) dbMeal.ingredients = meal.ingredients;
+  if (meal.allergens !== undefined) dbMeal.allergens = meal.allergens;
+  if (meal.availableQuantity !== undefined) dbMeal.available_quantity = meal.availableQuantity;
+  if (meal.pickupTimes !== undefined) dbMeal.pickup_times = meal.pickupTimes;
+  if (meal.rating !== undefined) dbMeal.rating = meal.rating;
+  if (meal.reviewCount !== undefined) dbMeal.review_count = meal.reviewCount;
+  if (meal.createdAt !== undefined) dbMeal.created_at = meal.createdAt;
+  
+  return dbMeal;
 }
 
 // User operations
@@ -149,15 +132,14 @@ export const userService = {
   },
 
   async createUser(userData: Partial<User>, userType: UserType): Promise<Cook | Customer> {
-    // Generate a unique ID for the user
-    const userId = `${userType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const id = `${userType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    console.log('💾 Database: Creating user with ID:', userId);
+    console.log('💾 Database: Creating user with ID:', id);
     
-    const dbUser = {
-      id: userId,
-      name: userData.name || '',
-      email: userData.email || '',
+    const dbUserData = {
+      id,
+      name: userData.name,
+      email: userData.email,
       phone: userData.phone,
       avatar: userData.avatar,
       user_type: userType,
@@ -172,19 +154,19 @@ export const userService = {
       favorites: userType === 'customer' ? [] : null
     };
 
-    console.log('💾 Database: Inserting user data:', dbUser);
+    console.log('💾 Database: Inserting user data:', dbUserData);
 
     const { data, error } = await supabase
       .from('users')
-      .insert(dbUser)
+      .insert(dbUserData)
       .select()
       .single();
 
     if (error) {
-      console.error('❌ Database: User creation failed:', error);
+      console.error('💾 Database: Insert error:', error);
       throw new Error(error.message);
     }
-    
+
     console.log('✅ Database: User created successfully:', data);
     const convertedUser = convertDbUserToAppUser(data);
     console.log('✅ Database: Converted user:', convertedUser);
@@ -193,18 +175,197 @@ export const userService = {
   },
 
   async updateUser(userId: string, updates: Partial<Cook | Customer>): Promise<Cook | Customer> {
-    const dbUpdates = convertAppUserToDbUser(updates as Cook | Customer);
-    const { id, ...updatesWithoutId } = dbUpdates; // Don't update ID
+    console.log('💾 Database: updateUser called with userId:', userId);
+    console.log('💾 Database: updateUser called with updates:', updates);
+    
+    try {
+      // First, let's see what users actually exist in the database
+      console.log('🔍 Database: Checking all users for debugging...');
+      const { data: allUsers, error: allUsersError } = await supabase
+        .from('users')
+        .select('id, name, email')
+        .limit(10);
+      console.log('📋 Database: All users in database:', allUsers);
+      
+      // Check if the user actually exists
+      console.log('🔍 Database: Checking if user exists with ID:', userId);
+      let { data: existingUser, error: checkError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no rows found
+        
+      console.log('🔍 Database: User check result:', { existingUser, checkError });
+      
+      if (checkError) {
+        console.error('❌ Database: Error checking user existence:', checkError);
+        throw new Error(checkError.message);
+      }
+      
+      // If user doesn't exist, try to find by email as backup
+      if (!existingUser && updates.email) {
+        console.log('🔍 Database: User ID not found, trying to find by email:', updates.email);
+        const { data: userByEmail, error: emailError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', updates.email)
+          .maybeSingle();
+          
+        console.log('📧 Database: User found by email:', userByEmail);
+        
+        if (userByEmail && !emailError) {
+          console.log('🔄 Database: Found user by email, updating that record instead');
+          // Use the correct user ID from the database
+          userId = userByEmail.id;
+          existingUser = userByEmail;
+        }
+      }
+      
+      // If user doesn't exist, we need to create it first
+      if (!existingUser) {
+        console.log('⚠️ Database: User does not exist, creating new user...');
+        
+        // Convert the updates back to a format suitable for createUser
+        const userData = {
+          name: updates.name,
+          email: updates.email,
+          phone: updates.phone,
+          avatar: updates.avatar,
+          bio: updates.bio,
+          location: updates.location
+        };
+        
+        // Determine user type from the updates or default to 'cook'
+        const userType = (updates as any).userType || 'cook';
+        
+        console.log('🔄 Database: Creating user with data:', userData, 'type:', userType);
+        
+        // Use createUser but with the specific ID
+        const dbUserData = {
+          id: userId, // Use the existing ID
+          name: userData.name,
+          email: userData.email,
+          phone: userData.phone,
+          avatar: userData.avatar,
+          user_type: userType,
+          latitude: userData.location?.latitude,
+          longitude: userData.location?.longitude,
+          address: userData.location?.address,
+          bio: userData.bio,
+          rating: 0,
+          review_count: 0,
+          cuisine_types: userType === 'cook' ? (updates as Cook).cuisineTypes || [] : null,
+          available_for_pickup: userType === 'cook' ? (updates as Cook).availableForPickup || true : null,
+          favorites: userType === 'customer' ? (updates as Customer).favorites || [] : null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
 
-    const { data, error } = await supabase
-      .from('users')
-      .update({ ...updatesWithoutId, updated_at: new Date().toISOString() })
-      .eq('id', userId)
-      .select()
-      .single();
+        console.log('💾 Database: Inserting new user with data:', dbUserData);
 
-    if (error) throw new Error(error.message);
-    return convertDbUserToAppUser(data);
+        const { data: newUser, error: insertError } = await supabase
+          .from('users')
+          .insert(dbUserData)
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('💾 Database: Insert error:', insertError);
+          throw new Error(insertError.message);
+        }
+
+        console.log('✅ Database: User created successfully:', newUser);
+        const convertedUser = convertDbUserToAppUser(newUser);
+        console.log('✅ Database: Final converted user:', convertedUser);
+        return convertedUser;
+      }
+      
+      // User exists, proceed with update
+      console.log('✅ Database: User exists, proceeding with update');
+      
+      // Build the update object with only the fields we want to change
+      const updateData: any = {
+        updated_at: new Date().toISOString()
+      };
+      
+      // Only include fields that are actually being updated
+      if (updates.name !== undefined) updateData.name = updates.name;
+      if (updates.email !== undefined) updateData.email = updates.email;
+      if (updates.phone !== undefined) updateData.phone = updates.phone;
+      if (updates.avatar !== undefined) updateData.avatar = updates.avatar;
+      if (updates.bio !== undefined) updateData.bio = updates.bio;
+      
+      // Handle verification status updates
+      if (updates.isEmailVerified !== undefined) updateData.email_verified = updates.isEmailVerified;
+      if (updates.emailVerifiedAt !== undefined) updateData.email_verified_at = updates.emailVerifiedAt ? updates.emailVerifiedAt.toISOString() : null;
+      if (updates.isPhoneVerified !== undefined) updateData.phone_verified = updates.isPhoneVerified;
+      if (updates.phoneVerifiedAt !== undefined) updateData.phone_verified_at = updates.phoneVerifiedAt ? updates.phoneVerifiedAt.toISOString() : null;
+      
+      // Handle location updates
+      if (updates.location) {
+        if (updates.location.address !== undefined) updateData.address = updates.location.address;
+        if (updates.location.latitude !== undefined) updateData.latitude = updates.location.latitude;
+        if (updates.location.longitude !== undefined) updateData.longitude = updates.location.longitude;
+      }
+      
+      // Handle cook-specific fields
+      const cookUpdates = updates as Partial<Cook>;
+      if (cookUpdates.cuisineTypes !== undefined) {
+        updateData.cuisine_types = cookUpdates.cuisineTypes;
+      }
+      if (cookUpdates.availableForPickup !== undefined) {
+        updateData.available_for_pickup = cookUpdates.availableForPickup;
+      }
+      
+      // Handle customer-specific fields  
+      const customerUpdates = updates as Partial<Customer>;
+      if (customerUpdates.favorites !== undefined) {
+        updateData.favorites = customerUpdates.favorites;
+      }
+      
+      console.log('💾 Database: Update data to send:', updateData);
+      
+      // Log verification status changes
+      if (updates.isEmailVerified !== undefined || updates.emailVerifiedAt !== undefined) {
+        console.log('📧 Database: Email verification status being updated:', {
+          isEmailVerified: updates.isEmailVerified,
+          emailVerifiedAt: updates.emailVerifiedAt
+        });
+      }
+      
+      // Try using upsert instead of update to bypass RLS issues
+      console.log('� Database: Attempting UPSERT approach...');
+      const { data: upsertedUser, error: upsertError } = await supabase
+        .from('users')
+        .upsert({
+          ...existingUser,
+          ...updateData
+        })
+        .select()
+        .single();
+        
+      if (upsertError) {
+        console.error('❌ Database: Upsert failed:', upsertError);
+        throw new Error(upsertError.message);
+      }
+      
+      console.log('✅ Database: User updated successfully:', upsertedUser);
+      
+      // Verify the data was saved correctly
+      console.log('🔍 Database: Verification check:');
+      console.log('📤 Sent phone:', updates.phone, '📥 Stored phone:', upsertedUser.phone);
+      console.log('📤 Sent address:', updates.location?.address, '📥 Stored address:', upsertedUser.address);  
+      console.log('📤 Sent bio:', updates.bio, '📥 Stored bio:', upsertedUser.bio);
+      console.log('📤 Sent avatar:', updates.avatar, '📥 Stored avatar:', upsertedUser.avatar);
+      
+      const convertedUser = convertDbUserToAppUser(upsertedUser);
+      console.log('✅ Database: Final converted user:', convertedUser);
+      return convertedUser;
+      
+    } catch (error) {
+      console.error('❌ Database: Update operation failed:', error);
+      throw error;
+    }
   },
 
   async getAllCooks(): Promise<Cook[]> {
@@ -215,10 +376,46 @@ export const userService = {
 
     if (error) throw new Error(error.message);
     return data.map(convertDbUserToAppUser) as Cook[];
+  },
+
+  async getTrendingCooks(limit: number = 10): Promise<Cook[]> {
+    // Get cooks ordered by rating and review count
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('user_type', 'cook')
+      .not('rating', 'is', null)
+      .gte('review_count', 1) // At least 1 review
+      .order('rating', { ascending: false })
+      .order('review_count', { ascending: false })
+      .limit(limit);
+
+    if (error) throw new Error(error.message);
+    return data.map(convertDbUserToAppUser) as Cook[];
+  },
+
+  async getRisingStarCooks(limit: number = 5): Promise<Cook[]> {
+    // Get newer cooks (created in last 90 days) with good ratings
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('user_type', 'cook')
+      .gte('created_at', ninetyDaysAgo.toISOString())
+      .gte('rating', 4.0) // Good rating
+      .gte('review_count', 1) // At least 1 review
+      .order('rating', { ascending: false })
+      .order('review_count', { ascending: false })
+      .limit(limit);
+
+    if (error) throw new Error(error.message);
+    return data.map(convertDbUserToAppUser) as Cook[];
   }
 };
 
-// Meal operations
+// Meal Service
 export const mealService = {
   async getAllMeals(): Promise<Meal[]> {
     const { data, error } = await supabase
@@ -227,7 +424,7 @@ export const mealService = {
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
-    return data.map(convertDbMealToAppMeal);
+    return (data || []).map(convertDbMealToAppMeal);
   },
 
   async getMealById(id: string): Promise<Meal | null> {
@@ -237,7 +434,10 @@ export const mealService = {
       .eq('id', id)
       .single();
 
-    if (error || !data) return null;
+    if (error) {
+      if (error.code === 'PGRST116') return null; // Not found
+      throw new Error(error.message);
+    }
     return convertDbMealToAppMeal(data);
   },
 
@@ -249,23 +449,42 @@ export const mealService = {
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
-    return data.map(convertDbMealToAppMeal);
+    return (data || []).map(convertDbMealToAppMeal);
   },
 
   async createMeal(meal: Omit<Meal, 'id' | 'createdAt'>): Promise<Meal> {
-    // Generate a unique ID for the meal
-    const mealId = `meal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log('💾 Database: Creating meal with data:', meal);
     
-    const dbMeal = {
-      ...convertAppMealToDbMeal(meal as Meal),
-      id: mealId,
-      created_at: new Date().toISOString()
-    };
-    const { id, ...mealWithoutId } = dbMeal;
+    const dbMeal = convertAppMealToDbMeal({
+      ...meal,
+      id: `meal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: new Date().toISOString()
+    });
+    
+    console.log('💾 Database: Converted meal data for DB:', dbMeal);
 
     const { data, error } = await supabase
       .from('meals')
-      .insert(mealWithoutId)
+      .insert(dbMeal)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('💾 Database: Meal creation error:', error);
+      throw new Error(error.message);
+    }
+    
+    console.log('✅ Database: Meal created successfully:', data);
+    return convertDbMealToAppMeal(data);
+  },
+
+  async updateMeal(id: string, updates: Partial<Meal>): Promise<Meal> {
+    const dbUpdates = convertAppMealToDbMeal(updates);
+    
+    const { data, error } = await supabase
+      .from('meals')
+      .update(dbUpdates)
+      .eq('id', id)
       .select()
       .single();
 
@@ -273,62 +492,81 @@ export const mealService = {
     return convertDbMealToAppMeal(data);
   },
 
-  async updateMeal(mealId: string, updates: Partial<Meal>): Promise<Meal> {
-    const dbUpdates = convertAppMealToDbMeal(updates as Meal);
-    const { id, created_at, ...updatesWithoutIdAndDate } = dbUpdates;
-
-    const { data, error } = await supabase
-      .from('meals')
-      .update({ ...updatesWithoutIdAndDate, updated_at: new Date().toISOString() })
-      .eq('id', mealId)
-      .select()
-      .single();
-
-    if (error) throw new Error(error.message);
-    return convertDbMealToAppMeal(data);
-  },
-
-  async deleteMeal(mealId: string): Promise<void> {
+  async deleteMeal(id: string): Promise<void> {
     const { error } = await supabase
       .from('meals')
       .delete()
-      .eq('id', mealId);
+      .eq('id', id);
 
     if (error) throw new Error(error.message);
+  },
+
+  // Analytics and trending functions
+  async getTrendingMeals(limit: number = 10): Promise<Meal[]> {
+    // Get meals ordered by a combination of rating and review count
+    const { data, error } = await supabase
+      .from('meals')
+      .select('*')
+      .not('rating', 'is', null)
+      .gte('review_count', 1) // At least 1 review
+      .order('rating', { ascending: false })
+      .order('review_count', { ascending: false })
+      .limit(limit);
+
+    if (error) throw new Error(error.message);
+    return (data || []).map(convertDbMealToAppMeal);
+  },
+
+  async getMostOrderedMeals(limit: number = 10): Promise<Meal[]> {
+    // Get meals with the most orders from reservations
+    const { data, error } = await supabase
+      .from('meals')
+      .select(`
+        *,
+        reservations:reservations!inner(meal_id)
+      `)
+      .order('review_count', { ascending: false })
+      .limit(limit);
+
+    if (error) throw new Error(error.message);
+    return (data || []).map(convertDbMealToAppMeal);
+  },
+
+  async getPopularCuisineTypes(): Promise<{cuisineType: string, count: number, avgRating: number}[]> {
+    const { data, error } = await supabase
+      .from('meals')
+      .select('cuisine_type, rating')
+      .not('cuisine_type', 'is', null);
+
+    if (error) throw new Error(error.message);
+
+    // Group by cuisine type and calculate stats
+    const cuisineStats: Record<string, {count: number, totalRating: number, avgRating: number}> = {};
+    
+    data?.forEach(meal => {
+      const cuisine = meal.cuisine_type;
+      if (!cuisineStats[cuisine]) {
+        cuisineStats[cuisine] = { count: 0, totalRating: 0, avgRating: 0 };
+      }
+      cuisineStats[cuisine].count++;
+      if (meal.rating) {
+        cuisineStats[cuisine].totalRating += meal.rating;
+      }
+    });
+
+    // Calculate averages and format for return
+    return Object.entries(cuisineStats)
+      .map(([cuisineType, stats]) => ({
+        cuisineType,
+        count: stats.count,
+        avgRating: stats.count > 0 ? stats.totalRating / stats.count : 0
+      }))
+      .sort((a, b) => b.count - a.count);
   }
 };
 
-// Reservation operations
+// Reservation Service
 export const reservationService = {
-  async createReservation(reservation: Omit<Reservation, 'id' | 'createdAt'>): Promise<Reservation> {
-    // Generate a unique ID for the reservation
-    const reservationId = `reservation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
-    const dbReservation = {
-      id: reservationId,
-      meal_id: reservation.mealId,
-      customer_id: reservation.customerId,
-      cook_id: reservation.cookId,
-      status: reservation.status,
-      quantity: reservation.quantity,
-      total_price: reservation.totalPrice,
-      pickup_time: reservation.pickupTime,
-      payment_confirmed: reservation.paymentConfirmed,
-      payment_id: reservation.paymentId,
-      payment_status: reservation.paymentStatus,
-      created_at: new Date().toISOString()
-    };
-
-    const { data, error } = await supabase
-      .from('reservations')
-      .insert(dbReservation)
-      .select()
-      .single();
-
-    if (error) throw new Error(error.message);
-    return convertDbReservationToAppReservation(data);
-  },
-
   async getReservationsByCustomerId(customerId: string): Promise<Reservation[]> {
     const { data, error } = await supabase
       .from('reservations')
@@ -337,7 +575,7 @@ export const reservationService = {
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
-    return data.map(convertDbReservationToAppReservation);
+    return data || [];
   },
 
   async getReservationsByCookId(cookId: string): Promise<Reservation[]> {
@@ -348,93 +586,32 @@ export const reservationService = {
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
-    return data.map(convertDbReservationToAppReservation);
+    return data || [];
   },
 
-  async updateReservation(reservationId: string, updates: Partial<Reservation>): Promise<Reservation> {
-    const dbUpdates: any = {
-      updated_at: new Date().toISOString()
-    };
-
-    if (updates.status) dbUpdates.status = updates.status;
-    if (updates.paymentConfirmed !== undefined) dbUpdates.payment_confirmed = updates.paymentConfirmed;
-    if (updates.paymentId) dbUpdates.payment_id = updates.paymentId;
-    if (updates.paymentStatus) dbUpdates.payment_status = updates.paymentStatus;
-    if (updates.rating) {
-      dbUpdates.meal_rating = updates.rating.mealRating;
-      dbUpdates.cook_rating = updates.rating.cookRating;
-      dbUpdates.review_text = updates.rating.reviewText;
-    }
-
+  async createReservation(reservation: Omit<Reservation, 'id' | 'createdAt'>): Promise<Reservation> {
     const { data, error } = await supabase
       .from('reservations')
-      .update(dbUpdates)
-      .eq('id', reservationId)
-      .select()
-      .single();
-
-    if (error) throw new Error(error.message);
-    return convertDbReservationToAppReservation(data);
-  }
-};
-
-// Message operations
-export const messageService = {
-  async sendMessage(senderId: string, receiverId: string, content: string): Promise<Message> {
-    // Generate a unique ID for the message
-    const messageId = `message-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
-    const { data, error } = await supabase
-      .from('messages')
       .insert({
-        id: messageId,
-        sender_id: senderId,
-        receiver_id: receiverId,
-        content,
-        read: false,
+        ...reservation,
         created_at: new Date().toISOString()
       })
       .select()
       .single();
 
     if (error) throw new Error(error.message);
-    
-    return {
-      id: data.id,
-      senderId: data.sender_id,
-      receiverId: data.receiver_id,
-      content: data.content,
-      read: data.read,
-      createdAt: data.created_at
-    };
+    return data;
   },
 
-  async getMessagesBetweenUsers(userId1: string, userId2: string): Promise<Message[]> {
+  async updateReservation(id: string, updates: Partial<Reservation>): Promise<Reservation> {
     const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .or(`and(sender_id.eq.${userId1},receiver_id.eq.${userId2}),and(sender_id.eq.${userId2},receiver_id.eq.${userId1})`)
-      .order('created_at', { ascending: true });
+      .from('reservations')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
 
     if (error) throw new Error(error.message);
-    
-    return data.map(msg => ({
-      id: msg.id,
-      senderId: msg.sender_id,
-      receiverId: msg.receiver_id,
-      content: msg.content,
-      read: msg.read,
-      createdAt: msg.created_at
-    }));
-  },
-
-  async markMessagesAsRead(userId: string, otherUserId: string): Promise<void> {
-    const { error } = await supabase
-      .from('messages')
-      .update({ read: true })
-      .eq('sender_id', otherUserId)
-      .eq('receiver_id', userId);
-
-    if (error) throw new Error(error.message);
+    return data;
   }
 };

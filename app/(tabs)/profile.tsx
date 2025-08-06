@@ -66,7 +66,7 @@ export default function ProfileScreen() {
           <View style={styles.profileInfo}>
             <View style={styles.avatarContainer}>
               <Image
-                source={{ uri: user.avatar || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330' }}
+                source={user.avatar ? { uri: user.avatar } : require('@/assets/images/icon.png')}
                 style={styles.avatar}
                 contentFit="cover"
               />

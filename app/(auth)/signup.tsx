@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { StyleSheet, View, Text, TouchableOpacity, Alert, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Mail, Lock, User } from 'lucide-react-native';
 import { useAuthStore } from '@/store/auth-store';
 import Colors from '@/constants/colors';
@@ -11,12 +11,19 @@ import { userService } from '@/lib/database';
 
 export default function SignupScreen() {
   const router = useRouter();
-  const { signup, isLoading, error } = useAuthStore();
+  const { signup, isLoading, error, clearError } = useAuthStore();
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Clear error when screen gains focus
+  useFocusEffect(
+    React.useCallback(() => {
+      clearError();
+    }, [clearError])
+  );
   
   const [nameError, setNameError] = useState('');
   const [emailError, setEmailError] = useState('');
@@ -87,43 +94,61 @@ export default function SignupScreen() {
     router.push('/login');
   };
   
-  const handleTestSignup = async () => {
-    console.log('🧪 Testing signup with sample data...');
+  const handleTestSignupAlex = async () => {
+    console.log('🧪 Testing customer signup with Alex...');
     
     try {
-      const testUser = {
-        name: 'Test User',
-        email: `test-${Date.now()}@example.com`,
-        password: 'test123'
-      };
-      
-      console.log('🧪 Creating test user:', testUser);
-      
-      // Test direct database insertion
-      const createdUser = await userService.createUser({
-        name: testUser.name,
-        email: testUser.email
-      }, 'customer');
-      
-      console.log('✅ Test user created successfully:', createdUser);
-      
-      // Now test the signup flow
-      await signup({
-        name: testUser.name,
-        email: testUser.email
-      }, testUser.password, 'customer');
-      
-      Alert.alert('Test Success', `User created and logged in: ${createdUser.name}`);
-      router.replace('/(tabs)');
+      // Navigate to user-type with Alex's data
+      router.push({
+        pathname: '/user-type',
+        params: {
+          name: 'Alex',
+          email: 'alex@alex.com',
+          password: 'alexalex',
+          testUserType: 'customer'
+        },
+      });
       
     } catch (error) {
-      console.error('❌ Test signup failed:', error);
+      console.error('❌ Alex signup failed:', error);
+      Alert.alert('Test Failed', error instanceof Error ? error.message : 'Unknown error');
+    }
+  };
+
+  const handleTestSignupMaria = async () => {
+    console.log('🧪 Testing cook signup with Maria...');
+    
+    try {
+      // Navigate to user-type with Maria's data
+      router.push({
+        pathname: '/user-type',
+        params: {
+          name: 'Maria',
+          email: 'maria@maria.com',
+          password: 'mariamaria',
+          testUserType: 'cook'
+        },
+      });
+      
+    } catch (error) {
+      console.error('❌ Maria signup failed:', error);
       Alert.alert('Test Failed', error instanceof Error ? error.message : 'Unknown error');
     }
   };
   
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.innerContainer}>
       <View style={styles.header}>
         <Text style={styles.title}>Create Account</Text>
         <Text style={styles.subtitle}>Sign up to start using HomeCook</Text>
@@ -184,12 +209,22 @@ export default function SignupScreen() {
         />
         
         <Button
-          title="🧪 Test Signup"
-          onPress={handleTestSignup}
+          title="🧪 Test Alex (Customer)"
+          onPress={handleTestSignupAlex}
           variant="secondary"
           loading={isLoading}
           disabled={isLoading}
-          style={[styles.button, styles.testButton]}
+          style={styles.button}
+          fullWidth
+        />
+        
+        <Button
+          title="🧪 Test Maria (Cook)"
+          onPress={handleTestSignupMaria}
+          variant="secondary"
+          loading={isLoading}
+          disabled={isLoading}
+          style={styles.button}
           fullWidth
         />
       </View>
@@ -200,7 +235,9 @@ export default function SignupScreen() {
           <Text style={styles.footerLink}>Log In</Text>
         </TouchableOpacity>
       </View>
-    </View>
+      </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -208,7 +245,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.white,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  contentContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
     padding: 24,
+  },
+  innerContainer: {
+    flex: 1,
   },
   header: {
     marginBottom: 24,

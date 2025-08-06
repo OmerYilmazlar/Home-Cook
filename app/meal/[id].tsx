@@ -11,9 +11,10 @@ import { useReservationsStore } from '@/store/reservations-store';
 import { useMessagingStore } from '@/store/messaging-store';
 import { usePaymentStore } from '@/store/payment-store';
 import { useLocationStore } from '@/store/location-store';
+import { userService } from '@/lib/database';
+import type { Cook } from '@/types';
 import Colors from '@/constants/colors';
 import Button from '@/components/Button';
-import { mockCooks, mockCustomers } from '@/mocks/users';
 
 export default function MealDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -28,10 +29,9 @@ export default function MealDetailScreen() {
   
   const [quantity, setQuantity] = useState(1);
   const [selectedPickupTime, setSelectedPickupTime] = useState<string | null>(null);
+  const [cook, setCook] = useState<Cook | null>(null);
+  const [cookLoading, setCookLoading] = useState(false);
   const { hasPermission, userLocation } = useLocationStore();
-  
-  // Get cook information
-  const cook = selectedMeal ? (mockCooks || []).find(c => c.id === selectedMeal.cookId) : null;
   
   useEffect(() => {
     if (id) {
@@ -40,6 +40,28 @@ export default function MealDetailScreen() {
     // Fetch reservations to get the reviews
     fetchReservations();
   }, [id]);
+
+  // Fetch cook information when selectedMeal changes
+  useEffect(() => {
+    const fetchCook = async () => {
+      if (selectedMeal?.cookId) {
+        setCookLoading(true);
+        try {
+          console.log('🔍 Fetching cook with ID:', selectedMeal.cookId);
+          const cookData = await userService.getUserById(selectedMeal.cookId);
+          console.log('👨‍🍳 Cook data fetched:', cookData);
+          setCook(cookData as Cook);
+        } catch (error) {
+          console.error('❌ Error fetching cook:', error);
+          setCook(null);
+        } finally {
+          setCookLoading(false);
+        }
+      }
+    };
+
+    fetchCook();
+  }, [selectedMeal?.cookId]);
   
   useEffect(() => {
     if (selectedMeal?.pickupTimes && selectedMeal.pickupTimes.length > 0) {
@@ -76,7 +98,7 @@ export default function MealDetailScreen() {
     }
   }, [user, selectedMeal]);
   
-  if (!selectedMeal) {
+  if (!selectedMeal || isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <Text>Loading...</Text>
@@ -242,7 +264,9 @@ export default function MealDetailScreen() {
           )}
           
           <View style={styles.cookInfo}>
-            <Text style={styles.cookName}>By {cook?.name || 'Unknown Cook'}</Text>
+            <Text style={styles.cookName}>
+              By {cookLoading ? 'Loading...' : cook?.name || 'Unknown Cook'}
+            </Text>
             {cook?.id && (
               <TouchableOpacity onPress={() => router.push(`/cook/${cook.id}`)}>
                 <Text style={styles.viewProfile}>View Profile</Text>

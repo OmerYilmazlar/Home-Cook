@@ -10,7 +10,7 @@ import Input from '@/components/Input';
 import Button from '@/components/Button';
 import { PhoneInput } from '@/components/PhoneInput';
 
-import { validatePhoneNumber, formatPhoneNumber, validateAddress, getAddressSuggestions, validateBio } from '@/utils/validation';
+import { validatePhoneNumber, formatPhoneNumber, validateAddress, getAddressSuggestions, validateBio, validateAddressWithGoogle } from '@/utils/validation';
 import { validateAddressAPI, validatePostalCode } from '@/utils/addressValidation';
 import { Country } from '@/constants/countries';
 
@@ -55,6 +55,9 @@ export default function EditProfileScreen() {
 
   
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [addressValidating, setAddressValidating] = useState(false);
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   // Removed phoneValid state - phone is now optional without validation
   
   // Auto-clear errors after 5 seconds
@@ -103,19 +106,52 @@ export default function EditProfileScreen() {
   // Validate existing values on component mount
   useEffect(() => {
     // Phone validation removed - phone is now optional without validation
-    if (isCook) {
-      validateCompleteAddress();
+    if (isCook && streetAddress && city && state && zipCode) {
+      const timeoutId = setTimeout(() => {
+        validateCompleteAddress();
+      }, 500); // Debounce validation
+      
+      return () => clearTimeout(timeoutId);
     }
-  }, [streetAddress, city, state, zipCode]);
+  }, [streetAddress, city, state, zipCode, isCook]);
 
-  // Validate complete address
-  const validateCompleteAddress = () => {
-    const isValid = streetAddress.trim().length >= 5 && 
-                   city.trim().length >= 2 && 
-                   state.trim().length >= 2 && 
-                   zipCode.trim().length >= 3; // Allow shorter postal codes like "SW1"
-    setAddressValid(isValid);
-    return isValid;
+  // Validate complete address with Google Places API
+  const validateCompleteAddress = async () => {
+    const fullAddress = getFullAddress();
+    if (fullAddress.length < 10) {
+      setAddressValid(false);
+      return false;
+    }
+
+    try {
+      setAddressValidating(true);
+      const validation = await validateAddressWithGoogle(fullAddress);
+      setAddressValid(validation.isValid);
+      
+      if (!validation.isValid && validation.error) {
+        setErrors(prev => ({ ...prev, address: validation.error }));
+      } else if (validation.isValid) {
+        // Clear any previous address errors
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.address;
+          return newErrors;
+        });
+      }
+      
+      return validation.isValid;
+    } catch (error) {
+      console.warn('Address validation failed:', error);
+      // Fallback to basic validation
+      const isValid = streetAddress.trim().length >= 5 && 
+                     city.trim().length >= 2 && 
+                     state.trim().length >= 2 && 
+                     zipCode.trim().length >= 3;
+      setAddressValid(isValid);
+      return isValid;
+    } finally {
+      setAddressValidating(false);
+    }
   };
   
   // Get full address string
@@ -146,13 +182,20 @@ export default function EditProfileScreen() {
     
     // Phone is now optional - no validation required
     
-    if (isCook && !validateCompleteAddress()) {
+    if (isCook) {
       if (!streetAddress) newErrors.streetAddress = 'Street address is required';
       if (!city) newErrors.city = 'City is required';
       if (!state) newErrors.state = 'State/Province is required';
       if (!zipCode) newErrors.zipCode = 'ZIP/Postal code is required';
       else if (selectedCountry && !validatePostalCode(zipCode, selectedCountry.code)) {
         newErrors.zipCode = `Invalid postal code format for ${selectedCountry.name}`;
+      }
+      
+      // Don't proceed if address validation is still in progress
+      if (addressValidating) {
+        newErrors.address = 'Please wait for address validation to complete';
+      } else if (!addressValid && streetAddress && city && state && zipCode) {
+        newErrors.address = 'Please enter a valid address';
       }
     }
     
@@ -368,17 +411,69 @@ export default function EditProfileScreen() {
             <Text style={styles.sectionTitle}>Address Information</Text>
             <Text style={styles.sectionSubtitle}>Required for customer pickup location</Text>
             
-            <Input
-              label="Street Address"
-              placeholder="e.g. 123 Main Street"
-              value={streetAddress}
-              onChangeText={(text) => {
-                clearFieldError('streetAddress');
-                setStreetAddress(text);
-              }}
-              leftIcon={<MapPin size={20} color={Colors.subtext} />}
-              error={errors.streetAddress}
-            />
+            <View>
+              <Input
+                label="Street Address"
+                placeholder="e.g. 123 Main Street"
+                value={streetAddress}
+                onChangeText={async (text) => {
+                  clearFieldError('streetAddress');
+                  clearFieldError('address');
+                  setStreetAddress(text);
+                  
+                  // Get address suggestions as user types
+                  if (text.length >= 3) {
+                    try {
+                      const suggestions = await getAddressSuggestions(text);
+                      setAddressSuggestions(suggestions);
+                      setShowSuggestions(suggestions.length > 0);
+                    } catch (error) {
+                      console.warn('Failed to get address suggestions:', error);
+                      setAddressSuggestions([]);
+                      setShowSuggestions(false);
+                    }
+                  } else {
+                    setAddressSuggestions([]);
+                    setShowSuggestions(false);
+                  }
+                }}
+                leftIcon={<MapPin size={20} color={Colors.subtext} />}
+                error={errors.streetAddress}
+              />
+              
+              {/* Address suggestions dropdown */}
+              {showSuggestions && addressSuggestions.length > 0 && (
+                <View style={styles.suggestionsContainer}>
+                  {addressSuggestions.map((suggestion, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.suggestionItem}
+                      onPress={() => {
+                        // Parse the suggestion into components
+                        const parts = suggestion.split(',').map(p => p.trim());
+                        if (parts.length >= 2) {
+                          setStreetAddress(parts[0] || '');
+                          setCity(parts[1] || '');
+                          if (parts.length >= 3) {
+                            setState(parts[2] || '');
+                          }
+                          if (parts.length >= 4) {
+                            setZipCode(parts[3] || '');
+                          }
+                        } else {
+                          setStreetAddress(suggestion);
+                        }
+                        setShowSuggestions(false);
+                        setAddressSuggestions([]);
+                      }}
+                    >
+                      <MapPin size={16} color={Colors.subtext} />
+                      <Text style={styles.suggestionText}>{suggestion}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
             
             <View style={styles.addressRow}>
               <View style={styles.cityInput}>
@@ -419,9 +514,21 @@ export default function EditProfileScreen() {
               autoCapitalize="characters"
             />
             
-            {addressValid && (
+            {addressValidating && (
+              <Text style={styles.validationPending}>
+                🔍 Validating address...
+              </Text>
+            )}
+            
+            {addressValid && !addressValidating && (
               <Text style={styles.validationSuccess}>
                 ✓ Complete address: {getFullAddress()}
+              </Text>
+            )}
+            
+            {errors.address && (
+              <Text style={styles.errorText}>
+                {errors.address}
               </Text>
             )}
           </View>
@@ -450,6 +557,35 @@ export default function EditProfileScreen() {
             </Text>
           </View>
         </View>
+        
+        {/* Test button for Google Places API */}
+        {isCook && (
+          <Button
+            title="Test Google Places API"
+            onPress={async () => {
+              try {
+                console.log('🧪 Testing Google Places API...');
+                const testQuery = 'London';
+                const suggestions = await getAddressSuggestions(testQuery);
+                console.log('✅ API Test Results:', suggestions);
+                Alert.alert(
+                  'API Test Results',
+                  `Found ${suggestions.length} suggestions for "${testQuery}":\n\n${suggestions.slice(0, 3).join('\n')}`,
+                  [{ text: 'OK' }]
+                );
+              } catch (error) {
+                console.error('❌ API Test Failed:', error);
+                Alert.alert(
+                  'API Test Failed',
+                  `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                  [{ text: 'OK' }]
+                );
+              }
+            }}
+            style={[styles.submitButton, { backgroundColor: Colors.subtext }]}
+            fullWidth
+          />
+        )}
         
         <Button
           title="Save Changes"
@@ -553,6 +689,14 @@ const styles = StyleSheet.create({
     marginTop: 2,
     marginLeft: 0,
     marginBottom: 8,
+  },
+  validationPending: {
+    fontSize: 12,
+    color: Colors.subtext,
+    marginTop: 2,
+    marginLeft: 0,
+    marginBottom: 8,
+    fontStyle: 'italic',
   },
   helpText: {
     fontSize: 12,

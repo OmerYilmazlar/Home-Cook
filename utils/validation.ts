@@ -146,26 +146,41 @@ const GOOGLE_PLACES_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '
 export const getAddressSuggestions = async (query: string): Promise<string[]> => {
   if (query.length < 2) return [];
   
+  console.log('🔍 Google Places API: Fetching suggestions for:', query);
+  console.log('🔑 API Key:', GOOGLE_PLACES_API_KEY ? `${GOOGLE_PLACES_API_KEY.substring(0, 10)}...` : 'NOT SET');
+  
   try {
-    const response = await fetch(
-      `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${GOOGLE_PLACES_API_KEY}&types=address`
-    );
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${GOOGLE_PLACES_API_KEY}&types=address`;
+    console.log('📡 Request URL:', url.replace(GOOGLE_PLACES_API_KEY, 'API_KEY_HIDDEN'));
+    
+    const response = await fetch(url);
+    
+    console.log('📊 Response status:', response.status, response.statusText);
     
     if (!response.ok) {
-      console.warn('Google Places API request failed, falling back to mock data');
+      console.warn('❌ Google Places API request failed:', response.status, response.statusText);
+      console.warn('🔄 Falling back to mock data');
       return getMockAddressSuggestions(query);
     }
     
     const data = await response.json();
+    console.log('📋 API Response:', data);
     
     if (data.status === 'OK' && data.predictions) {
-      return data.predictions.map((prediction: any) => prediction.description).slice(0, 5);
+      const suggestions = data.predictions.map((prediction: any) => prediction.description).slice(0, 5);
+      console.log('✅ Found suggestions:', suggestions);
+      return suggestions;
     } else {
-      console.warn('Google Places API returned no results, falling back to mock data');
+      console.warn('⚠️ Google Places API status:', data.status);
+      if (data.error_message) {
+        console.warn('📝 Error message:', data.error_message);
+      }
+      console.warn('🔄 Falling back to mock data');
       return getMockAddressSuggestions(query);
     }
   } catch (error) {
-    console.warn('Error fetching address suggestions:', error);
+    console.error('💥 Error fetching address suggestions:', error);
+    console.warn('🔄 Falling back to mock data');
     return getMockAddressSuggestions(query);
   }
 };
@@ -181,21 +196,30 @@ export const validateAddressWithGoogle = async (address: string): Promise<{
     return { isValid: false, error: 'Address must be at least 5 characters long' };
   }
   
+  console.log('🏠 Google Geocoding: Validating address:', address);
+  console.log('🔑 API Key:', GOOGLE_PLACES_API_KEY ? `${GOOGLE_PLACES_API_KEY.substring(0, 10)}...` : 'NOT SET');
+  
   try {
     // First, try to geocode the address to verify it exists
-    const geocodeResponse = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_PLACES_API_KEY}`
-    );
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_PLACES_API_KEY}`;
+    console.log('📡 Geocoding URL:', url.replace(GOOGLE_PLACES_API_KEY, 'API_KEY_HIDDEN'));
+    
+    const geocodeResponse = await fetch(url);
+    
+    console.log('📊 Geocoding response status:', geocodeResponse.status, geocodeResponse.statusText);
     
     if (!geocodeResponse.ok) {
-      console.warn('Google Geocoding API request failed, using basic validation');
+      console.warn('❌ Google Geocoding API request failed:', geocodeResponse.status, geocodeResponse.statusText);
+      console.warn('🔄 Using basic validation fallback');
       return { isValid: validateAddress(address) };
     }
     
     const geocodeData = await geocodeResponse.json();
+    console.log('📋 Geocoding response:', geocodeData);
     
     if (geocodeData.status === 'OK' && geocodeData.results.length > 0) {
       const result = geocodeData.results[0];
+      console.log('✅ Address validated successfully:', result.formatted_address);
       return {
         isValid: true,
         suggestion: result.formatted_address,
@@ -205,16 +229,22 @@ export const validateAddressWithGoogle = async (address: string): Promise<{
         }
       };
     } else if (geocodeData.status === 'ZERO_RESULTS') {
+      console.warn('🔍 No results found for address');
       return { 
         isValid: false, 
         error: 'Address not found. Please check the address and try again.' 
       };
     } else {
-      console.warn('Google Geocoding API error:', geocodeData.status);
+      console.warn('⚠️ Google Geocoding API status:', geocodeData.status);
+      if (geocodeData.error_message) {
+        console.warn('📝 Error message:', geocodeData.error_message);
+      }
+      console.warn('🔄 Using basic validation fallback');
       return { isValid: validateAddress(address) };
     }
   } catch (error) {
-    console.warn('Error validating address with Google:', error);
+    console.error('💥 Error validating address with Google:', error);
+    console.warn('🔄 Using basic validation fallback');
     return { isValid: validateAddress(address) };
   }
 };

@@ -132,7 +132,8 @@ export const userService = {
   },
 
   async createUser(userData: Partial<User>, userType: UserType): Promise<Cook | Customer> {
-    const id = `${userType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // Use the provided ID (from Supabase Auth) or generate one if not provided
+    const id = userData.id || `${userType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
     console.log('💾 Database: Creating user with ID:', id);
     
@@ -151,7 +152,9 @@ export const userService = {
       review_count: 0,
       cuisine_types: userType === 'cook' ? [] : null,
       available_for_pickup: userType === 'cook' ? true : null,
-      favorites: userType === 'customer' ? [] : null
+      favorites: userType === 'customer' ? [] : null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
 
     console.log('💾 Database: Inserting user data:', dbUserData);

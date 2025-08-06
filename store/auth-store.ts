@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, UserType, Cook, Customer } from '@/types';
 import { userService } from '@/lib/database';
 import { initializeDatabase } from '@/lib/init-database';
+import { supabase } from '@/lib/supabase';
 
 interface AuthState {
   user: Cook | Customer | null;
@@ -13,7 +14,7 @@ interface AuthState {
   error: string | null;
   login: (email: string, password: string) => Promise<boolean>;
   signup: (userData: Partial<User>, password: string, userType: UserType) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateProfile: (userData: Partial<User>) => Promise<void>;
   addCuisineType: (cuisineType: string) => Promise<void>;
   updateUserRating: (userId: string, newRating: number) => Promise<void>;
@@ -33,14 +34,34 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       
-      console.log('Login attempt for:', email);
+      console.log('🔐 Auth Store: Login attempt for:', email);
       
-      // Find user by email in Supabase
-      const user = await userService.getUserByEmail(email);
+      // First, authenticate with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (authError) {
+        console.log('❌ Auth Store: Supabase auth failed:', authError.message);
+        set({ isLoading: false, error: authError.message });
+        return false;
+      }
+      
+      if (!authData.user) {
+        console.log('❌ Auth Store: No user returned from auth');
+        set({ isLoading: false, error: 'Authentication failed' });
+        return false;
+      }
+      
+      console.log('✅ Auth Store: Supabase auth successful, user ID:', authData.user.id);
+      
+      // Now get the user profile from our users table
+      const user = await userService.getUserById(authData.user.id);
       
       if (!user) {
-        console.log('User not found');
-        set({ isLoading: false, error: 'User not found' });
+        console.log('❌ Auth Store: User profile not found in database');
+        set({ isLoading: false, error: 'User profile not found' });
         return false;
       }
 
@@ -52,10 +73,10 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         error: null 
       });
       
-      console.log('Login successful:', user);
+      console.log('✅ Auth Store: Login successful:', user.name, user.email);
       return true;
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('❌ Auth Store: Login error:', error);
       set({ 
         isLoading: false, 
         error: error instanceof Error ? error.message : 'Login failed' 
@@ -74,21 +95,33 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
             userType
           });
           
-          // Check if email already exists
-          console.log('🔍 Auth Store: Checking if email exists...');
-          const existingUser = await userService.getUserByEmail(userData.email || '');
+          // First, create the auth user with Supabase Auth
+          console.log('🔐 Auth Store: Creating Supabase auth user...');
+          const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: userData.email!,
+            password: password
+          });
           
-          if (existingUser) {
-            console.log('⚠️ Auth Store: Email already exists');
-            throw new Error('Email already in use');
+          if (authError) {
+            console.log('❌ Auth Store: Supabase auth signup failed:', authError.message);
+            throw new Error(authError.message);
           }
           
-          console.log('✅ Auth Store: Email is available, creating user...');
+          if (!authData.user) {
+            console.log('❌ Auth Store: No user returned from auth signup');
+            throw new Error('Failed to create authentication account');
+          }
           
-          // Create new user in Supabase
-          const newUser = await userService.createUser(userData, userType);
+          console.log('✅ Auth Store: Supabase auth user created:', authData.user.id);
           
-          console.log('✅ Auth Store: User created successfully:', {
+          // Now create the user profile in our users table using the auth user ID
+          console.log('👤 Auth Store: Creating user profile...');
+          const newUser = await userService.createUser({
+            ...userData,
+            id: authData.user.id // Use the Supabase auth user ID
+          }, userType);
+          
+          console.log('✅ Auth Store: User profile created successfully:', {
             id: newUser.id,
             name: newUser.name,
             email: newUser.email,
@@ -108,25 +141,64 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         }
       },
       
-      logout: () => {
-        set({ user: null, isAuthenticated: false, error: null });
+      logout: async () => {
+        try {
+          console.log('🚪 Auth Store: Logging out...');
+          
+          // Sign out from Supabase Auth
+          const { error } = await supabase.auth.signOut();
+          if (error) {
+            console.error('❌ Auth Store: Logout error:', error);
+          }
+          
+          set({ user: null, isAuthenticated: false, error: null });
+          console.log('✅ Auth Store: Logout successful');
+        } catch (error) {
+          console.error('❌ Auth Store: Logout failed:', error);
+          // Still clear the local state even if logout fails
+          set({ user: null, isAuthenticated: false, error: null });
+        }
       },
       
       initialize: async () => {
-        console.log('Auth store initializing...');
+        console.log('🚀 Auth Store: Initializing...');
         
         try {
           // Initialize database with sample data
           await initializeDatabase();
-          console.log('Database initialized successfully');
+          console.log('✅ Auth Store: Database initialized successfully');
         } catch (error) {
-          console.error('Database initialization failed:', error);
+          console.error('❌ Auth Store: Database initialization failed:', error);
         }
         
-        // For development, don't auto-login - let users login manually
-        set({ isInitialized: true });
+        // Check if user is already authenticated
+        try {
+          console.log('🔍 Auth Store: Checking existing session...');
+          const { data: { session }, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error('❌ Auth Store: Session check failed:', error);
+          } else if (session?.user) {
+            console.log('✅ Auth Store: Found existing session for user:', session.user.id);
+            
+            // Get user profile
+            const user = await userService.getUserById(session.user.id);
+            if (user) {
+              console.log('✅ Auth Store: Restored user session:', user.name);
+              set({ user, isAuthenticated: true });
+            } else {
+              console.log('⚠️ Auth Store: User profile not found, clearing session');
+              await supabase.auth.signOut();
+            }
+          } else {
+            console.log('ℹ️ Auth Store: No existing session found');
+          }
+        } catch (error) {
+          console.error('❌ Auth Store: Session restoration failed:', error);
+        }
         
-        console.log('Auth store initialized');
+        set({ isInitialized: true });
+        console.log('✅ Auth Store: Initialization complete');
       },
       
 

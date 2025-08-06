@@ -102,9 +102,9 @@ export default function SignupScreen() {
       router.push({
         pathname: '/user-type',
         params: {
-          name: 'Alex',
-          email: 'alex@alex.com',
-          password: 'alexalex',
+          name: 'Alex Customer',
+          email: 'alex@test.com',
+          password: 'password123',
           testUserType: 'customer'
         },
       });
@@ -123,9 +123,9 @@ export default function SignupScreen() {
       router.push({
         pathname: '/user-type',
         params: {
-          name: 'Maria',
-          email: 'maria@maria.com',
-          password: 'mariamaria',
+          name: 'Maria Cook',
+          email: 'maria@test.com',
+          password: 'password123',
           testUserType: 'cook'
         },
       });

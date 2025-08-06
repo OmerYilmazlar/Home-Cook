@@ -5,15 +5,19 @@ import Colors from '@/constants/colors';
 import { countries, Country } from '@/constants/countries';
 
 interface CountryPickerProps {
-  selectedCountry: Country;
+  selectedCountry: Country | null;
   onSelectCountry: (country: Country) => void;
   style?: any;
+  error?: string;
+  label?: string;
 }
 
 export const CountryPicker: React.FC<CountryPickerProps> = ({
   selectedCountry,
   onSelectCountry,
-  style
+  style,
+  error,
+  label
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,15 +44,31 @@ export const CountryPicker: React.FC<CountryPickerProps> = ({
   );
 
   return (
-    <>
+    <View style={style}>
+      {label && <Text style={styles.label}>{label}</Text>}
+      
       <TouchableOpacity
-        style={[styles.selector, style]}
+        style={[
+          styles.selector, 
+          error && styles.selectorError,
+          !selectedCountry && styles.selectorPlaceholder
+        ]}
         onPress={() => setIsVisible(true)}
       >
-        <Text style={styles.flag}>{selectedCountry.flag}</Text>
-        <Text style={styles.dialCode}>{selectedCountry.dialCode}</Text>
+        {selectedCountry ? (
+          <>
+            <Text style={styles.flag}>{selectedCountry.flag}</Text>
+            <Text style={styles.countryName}>{selectedCountry.name}</Text>
+          </>
+        ) : (
+          <Text style={styles.placeholder}>Select Country</Text>
+        )}
         <ChevronDown size={16} color={Colors.subtext} />
       </TouchableOpacity>
+      
+      {error && (
+        <Text style={styles.errorText}>{error}</Text>
+      )}
 
       <Modal
         visible={isVisible}
@@ -89,21 +109,38 @@ export const CountryPicker: React.FC<CountryPickerProps> = ({
           </View>
         </View>
       </Modal>
-    </>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 8,
+  },
   selector: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: Colors.card,
-    borderRadius: 8,
+    backgroundColor: Colors.white,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.border,
-    minWidth: 85,
+    minHeight: 48,
+  },
+  selectorError: {
+    borderColor: Colors.error,
+  },
+  selectorPlaceholder: {
+    borderColor: Colors.border,
+  },
+  placeholder: {
+    flex: 1,
+    fontSize: 16,
+    color: Colors.subtext,
   },
   flag: {
     fontSize: 14,
@@ -177,6 +214,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: Colors.text,
-    marginLeft: 10,
+    marginLeft: 8,
+  },
+  errorText: {
+    fontSize: 12,
+    color: Colors.error,
+    marginTop: 4,
   },
 });

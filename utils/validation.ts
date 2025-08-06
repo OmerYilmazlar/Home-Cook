@@ -290,6 +290,179 @@ const getMockAddressSuggestions = (query: string): string[] => {
   return filtered;
 };
 
+// Get city suggestions based on country
+export const getCitySuggestions = async (query: string, countryCode: string): Promise<string[]> => {
+  if (query.length < 2) return [];
+  
+  console.log('🏙️ Google Places API: Fetching city suggestions for:', query, 'in', countryCode);
+  
+  try {
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${GOOGLE_PLACES_API_KEY}&types=(cities)&components=country:${countryCode.toLowerCase()}`;
+    console.log('📡 City Request URL:', url.replace(GOOGLE_PLACES_API_KEY, 'API_KEY_HIDDEN'));
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      console.warn('❌ Google Places API city request failed:', response.status);
+      return getMockCitySuggestions(query, countryCode);
+    }
+    
+    const data = await response.json();
+    
+    if (data.status === 'OK' && data.predictions) {
+      const suggestions = data.predictions.map((prediction: any) => {
+        // Extract just the city name (first part before comma)
+        const cityName = prediction.description.split(',')[0];
+        return cityName;
+      }).slice(0, 5);
+      console.log('✅ Found city suggestions:', suggestions);
+      return suggestions;
+    } else {
+      console.warn('⚠️ Google Places API city status:', data.status);
+      return getMockCitySuggestions(query, countryCode);
+    }
+  } catch (error) {
+    console.error('💥 Error fetching city suggestions:', error);
+    return getMockCitySuggestions(query, countryCode);
+  }
+};
+
+// Get ZIP code suggestions based on city and country
+export const getZipCodeSuggestions = async (query: string, city: string, countryCode: string): Promise<string[]> => {
+  if (query.length < 2) return [];
+  
+  console.log('📮 Google Places API: Fetching ZIP suggestions for:', query, 'in', city, countryCode);
+  
+  try {
+    const searchQuery = `${query} ${city} ${countryCode}`;
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(searchQuery)}&key=${GOOGLE_PLACES_API_KEY}&types=postal_code&components=country:${countryCode.toLowerCase()}`;
+    console.log('📡 ZIP Request URL:', url.replace(GOOGLE_PLACES_API_KEY, 'API_KEY_HIDDEN'));
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      console.warn('❌ Google Places API ZIP request failed:', response.status);
+      return getMockZipSuggestions(query, countryCode);
+    }
+    
+    const data = await response.json();
+    
+    if (data.status === 'OK' && data.predictions) {
+      const suggestions = data.predictions.map((prediction: any) => {
+        // Extract ZIP code from the description
+        const parts = prediction.description.split(',');
+        // Look for the part that looks like a ZIP code
+        for (const part of parts) {
+          const trimmed = part.trim();
+          if (countryCode === 'US' && /^\d{5}(-\d{4})?$/.test(trimmed)) {
+            return trimmed;
+          } else if (countryCode === 'GB' && /^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/i.test(trimmed)) {
+            return trimmed;
+          } else if (/^[A-Z0-9\s-]{3,10}$/i.test(trimmed)) {
+            return trimmed;
+          }
+        }
+        return prediction.description.split(',')[0]; // Fallback to first part
+      }).slice(0, 5);
+      console.log('✅ Found ZIP suggestions:', suggestions);
+      return suggestions;
+    } else {
+      console.warn('⚠️ Google Places API ZIP status:', data.status);
+      return getMockZipSuggestions(query, countryCode);
+    }
+  } catch (error) {
+    console.error('💥 Error fetching ZIP suggestions:', error);
+    return getMockZipSuggestions(query, countryCode);
+  }
+};
+
+// Get address suggestions within a specific ZIP code
+export const getAddressSuggestionsInZip = async (query: string, zipCode: string, city: string, countryCode: string): Promise<string[]> => {
+  if (query.length < 2) return [];
+  
+  console.log('🏠 Google Places API: Fetching address suggestions for:', query, 'in', zipCode, city, countryCode);
+  
+  try {
+    const searchQuery = `${query} ${zipCode} ${city} ${countryCode}`;
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(searchQuery)}&key=${GOOGLE_PLACES_API_KEY}&types=address&components=country:${countryCode.toLowerCase()}`;
+    console.log('📡 Address Request URL:', url.replace(GOOGLE_PLACES_API_KEY, 'API_KEY_HIDDEN'));
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      console.warn('❌ Google Places API address request failed:', response.status);
+      return getMockAddressSuggestionsInZip(query, zipCode);
+    }
+    
+    const data = await response.json();
+    
+    if (data.status === 'OK' && data.predictions) {
+      const suggestions = data.predictions.map((prediction: any) => {
+        // Extract just the street address (first part before comma)
+        const streetAddress = prediction.description.split(',')[0];
+        return streetAddress;
+      }).slice(0, 5);
+      console.log('✅ Found address suggestions:', suggestions);
+      return suggestions;
+    } else {
+      console.warn('⚠️ Google Places API address status:', data.status);
+      return getMockAddressSuggestionsInZip(query, zipCode);
+    }
+  } catch (error) {
+    console.error('💥 Error fetching address suggestions:', error);
+    return getMockAddressSuggestionsInZip(query, zipCode);
+  }
+};
+
+// Mock city suggestions fallback
+const getMockCitySuggestions = (query: string, countryCode: string): string[] => {
+  const mockCities: Record<string, string[]> = {
+    US: ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego', 'Dallas', 'San Jose'],
+    GB: ['London', 'Birmingham', 'Manchester', 'Glasgow', 'Liverpool', 'Leeds', 'Sheffield', 'Edinburgh', 'Bristol', 'Cardiff'],
+    CA: ['Toronto', 'Montreal', 'Vancouver', 'Calgary', 'Edmonton', 'Ottawa', 'Winnipeg', 'Quebec City', 'Hamilton', 'Kitchener'],
+    AU: ['Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide', 'Gold Coast', 'Newcastle', 'Canberra', 'Sunshine Coast', 'Wollongong']
+  };
+  
+  const cities = mockCities[countryCode] || mockCities.US;
+  const queryLower = query.toLowerCase();
+  
+  return cities.filter(city => 
+    city.toLowerCase().includes(queryLower) || 
+    city.toLowerCase().startsWith(queryLower)
+  ).slice(0, 5);
+};
+
+// Mock ZIP suggestions fallback
+const getMockZipSuggestions = (query: string, countryCode: string): string[] => {
+  if (countryCode === 'US') {
+    const baseZip = query.padEnd(5, '0').substring(0, 5);
+    return [
+      baseZip,
+      (parseInt(baseZip) + 1).toString().padStart(5, '0'),
+      (parseInt(baseZip) + 2).toString().padStart(5, '0')
+    ];
+  } else if (countryCode === 'GB') {
+    const baseCode = query.toUpperCase();
+    return [
+      baseCode + ' 1AA',
+      baseCode + ' 2BB',
+      baseCode + ' 3CC'
+    ].filter(code => code.length <= 8);
+  } else {
+    return [query + '001', query + '002', query + '003'];
+  }
+};
+
+// Mock address suggestions in ZIP fallback
+const getMockAddressSuggestionsInZip = (query: string, zipCode: string): string[] => {
+  const streetNumbers = ['123', '456', '789', '321', '654'];
+  const streetNames = ['Main St', 'Oak Ave', 'Pine Rd', 'Elm Dr', 'Maple Ln'];
+  
+  return streetNumbers.map((num, index) => 
+    `${num} ${query} ${streetNames[index]}`
+  ).slice(0, 3);
+};
+
 // Email validation
 export const validateEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

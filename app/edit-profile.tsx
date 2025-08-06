@@ -129,7 +129,7 @@ export default function EditProfileScreen() {
       setAddressValid(validation.isValid);
       
       if (!validation.isValid && validation.error) {
-        setErrors(prev => ({ ...prev, address: validation.error }));
+        setErrors(prev => ({ ...prev, address: validation.error || 'Invalid address' }));
       } else if (validation.isValid) {
         // Clear any previous address errors
         setErrors(prev => {

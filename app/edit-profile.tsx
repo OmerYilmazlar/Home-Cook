@@ -62,7 +62,7 @@ export default function EditProfileScreen() {
         const lastPart = addressParts[addressParts.length - 1];
         if (lastPart.includes('UK') || lastPart.includes('United Kingdom')) {
           // Set UK as default if detected
-          setSelectedCountry({ code: 'GB', name: 'United Kingdom', flag: '🇬🇧' });
+          setSelectedCountry({ code: 'GB', name: 'United Kingdom', flag: '🇬🇧', dialCode: '+44' });
         }
       } else {
         setStreetAddress(user.location.address);
@@ -715,7 +715,7 @@ export default function EditProfileScreen() {
           title="Save Changes"
           onPress={handleSubmit}
           loading={isLoading}
-          disabled={isLoading || (isCook && !isAddressValidated && selectedCountry && city && zipCode && streetAddress)}
+          disabled={isLoading || (isCook && !isAddressValidated && !!(selectedCountry && city && zipCode && streetAddress))}
           style={styles.submitButton}
           fullWidth
         />

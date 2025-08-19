@@ -10,6 +10,8 @@ interface CountryPickerProps {
   style?: any;
   error?: string;
   label?: string;
+  compact?: boolean;
+  testID?: string;
 }
 
 export const CountryPicker: React.FC<CountryPickerProps> = ({
@@ -17,7 +19,9 @@ export const CountryPicker: React.FC<CountryPickerProps> = ({
   onSelectCountry,
   style,
   error,
-  label
+  label,
+  compact = false,
+  testID
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,21 +48,23 @@ export const CountryPicker: React.FC<CountryPickerProps> = ({
   );
 
   return (
-    <View style={style}>
+    <View style={style} testID={testID ?? 'country-picker'}>
       {label && <Text style={styles.label}>{label}</Text>}
       
       <TouchableOpacity
         style={[
           styles.selector, 
           error && styles.selectorError,
-          !selectedCountry && styles.selectorPlaceholder
+          !selectedCountry && styles.selectorPlaceholder,
+          compact && styles.selectorCompact
         ]}
         onPress={() => setIsVisible(true)}
+        testID="country-picker-trigger"
       >
         {selectedCountry ? (
           <>
             <Text style={styles.flag}>{selectedCountry.flag}</Text>
-            <Text style={styles.countryName}>{selectedCountry.name}</Text>
+            {!compact && <Text style={styles.countryName}>{selectedCountry.name}</Text>}
           </>
         ) : (
           <Text style={styles.placeholder}>Select Country</Text>
@@ -130,6 +136,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     minHeight: 48,
+  },
+  selectorCompact: {
+    paddingHorizontal: 12,
+    minWidth: 56,
+    justifyContent: 'space-between',
   },
   selectorError: {
     borderColor: Colors.error,

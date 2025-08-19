@@ -251,6 +251,13 @@ function ThemedStack() {
             presentation: "card",
           }} 
         />
+        <Stack.Screen 
+          name="reset-password-confirm" 
+          options={{ 
+            title: "Reset Password",
+            presentation: "modal",
+          }} 
+        />
       </Stack>
     </>
   );

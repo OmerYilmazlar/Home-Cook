@@ -85,6 +85,12 @@ export default function ProfileScreen() {
                   {isCook ? 'Home Cook' : 'Food Lover'}
                 </Text>
               </View>
+
+              {user.bio ? (
+                <Text style={styles.bioHeader} numberOfLines={2}>
+                  {user.bio}
+                </Text>
+              ) : null}
               
               {user.rating && user.reviewCount !== undefined && user.reviewCount > 0 ? (
                 <View style={styles.ratingContainer}>
@@ -125,11 +131,7 @@ export default function ProfileScreen() {
         </View>
       </LinearGradient>
       
-      {isCook && cookUser?.bio && (
-        <View style={styles.bioContainer}>
-          <Text style={styles.bioText}>{cookUser.bio}</Text>
-        </View>
-      )}
+      
       
       {/* Wallet Card */}
       <View style={styles.walletContainer}>
@@ -352,23 +354,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  bioContainer: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 20,
-    marginHorizontal: 20,
-    marginBottom: 20,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  bioText: {
-    fontSize: 15,
-    color: Colors.text,
-    lineHeight: 22,
-    fontWeight: '500',
+  bioHeader: {
+    fontSize: 14,
+    color: Colors.white,
+    marginBottom: 8,
+    opacity: 0.95,
+    fontWeight: '600',
   },
   walletContainer: {
     marginHorizontal: 20,

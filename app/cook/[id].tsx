@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Star, MapPin, MessageCircle, Heart } from 'lucide-react-native';
+import { Star, MapPin, Heart } from 'lucide-react-native';
 import { useMealsStore } from '@/store/meals-store';
 import { useAuthStore } from '@/store/auth-store';
 import { useMessagingStore } from '@/store/messaging-store';
@@ -10,114 +10,136 @@ import { useFavoritesStore } from '@/store/favorites-store';
 import Colors from '@/constants/colors';
 import MealCard from '@/components/MealCard';
 import Button from '@/components/Button';
-import { mockCooks } from '@/mocks/users';
-import { mockReviews } from '@/mocks/reviews';
-import { mockMeals } from '@/mocks/meals';
+import { userService } from '@/lib/database';
+import type { Cook, Meal } from '@/types';
 
 export default function CookProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  
+
   const { user } = useAuthStore();
   const { fetchMealsByCook } = useMealsStore();
   const { createConversation } = useMessagingStore();
   const { addFavoriteCook, removeFavoriteCook, isFavoriteCook } = useFavoritesStore();
-  
-  const [cook, setCook] = useState<any>(null);
-  const [cookMeals, setCookMeals] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  useEffect(() => {
-    const loadCook = async () => {
+
+  const [cook, setCook] = useState<Cook | null>(null);
+  const [cookMeals, setCookMeals] = useState<Meal[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadCook = useCallback(async () => {
+    if (!id) return;
+    try {
       setIsLoading(true);
-      
-      // Find cook in mock data
-      const foundCook = mockCooks.find(c => c.id === id);
-      setCook(foundCook);
-      
-      if (foundCook) {
-        // Fetch meals by cook
-        const meals = await fetchMealsByCook(foundCook.id);
-        setCookMeals(meals);
+      setError(null);
+      console.log('🔎 CookProfile: loading cook by id', id);
+      const foundCook = await userService.getUserById(String(id));
+      if (!foundCook || foundCook.userType !== 'cook') {
+        console.log('⚠️ CookProfile: cook not found or not a cook', foundCook);
+        setCook(null);
+        setCookMeals([]);
+        setError('Cook not found');
+        return;
       }
-      
+      setCook(foundCook as Cook);
+      console.log('✅ CookProfile: cook loaded', foundCook.id, foundCook.name);
+      const meals = await fetchMealsByCook(foundCook.id);
+      setCookMeals(meals);
+      console.log('✅ CookProfile: meals loaded', meals.length);
+    } catch (e) {
+      console.error('❌ CookProfile: load error', e);
+      setError(e instanceof Error ? e.message : 'Failed to load cook');
+    } finally {
       setIsLoading(false);
-    };
-    
-    if (id) {
-      loadCook();
     }
-  }, [id]);
-  
-  if (isLoading || !cook) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading...</Text>
-      </View>
-    );
-  }
-  
-  const handleContactCook = async () => {
-    if (!user) {
+  }, [id, fetchMealsByCook]);
+
+  useEffect(() => {
+    void loadCook();
+  }, [loadCook]);
+
+  const isOwnProfile = useMemo(() => (user?.id && cook?.id ? user.id === cook.id : false), [user?.id, cook?.id]);
+  const isCustomer = useMemo(() => user?.userType === 'customer', [user?.userType]);
+  const isFavorite = useMemo(() => (cook ? isFavoriteCook(cook.id) : false), [cook, isFavoriteCook]);
+
+  const handleContactCook = useCallback(async () => {
+    if (!user || !cook) {
       Alert.alert('Login Required', 'Please log in to contact the cook');
       return;
     }
-    
     try {
       const conversationId = await createConversation([user.id, cook.id]);
       router.push(`/messages/${conversationId}`);
-    } catch (error) {
+    } catch (e) {
       Alert.alert('Error', 'Failed to start conversation');
     }
-  };
-  
-  // Check if current user is viewing their own profile
-  const isOwnProfile = user?.id === cook.id;
-  const isCustomer = user?.userType === 'customer';
-  const isFavorite = isFavoriteCook(cook.id);
-  
-  const handleFavoritePress = () => {
+  }, [user, cook, createConversation, router]);
+
+  const handleFavoritePress = useCallback(() => {
+    if (!cook) return;
     if (isFavorite) {
       removeFavoriteCook(cook.id);
     } else {
       addFavoriteCook(cook);
     }
-  };
-  
+  }, [cook, isFavorite, addFavoriteCook, removeFavoriteCook]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer} testID="cook-profile-loading">
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (error || !cook) {
+    return (
+      <View style={styles.loadingContainer} testID="cook-profile-error">
+        <Text style={styles.errorText}>{error ?? 'Cook not found'}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={loadCook} accessibilityRole="button">
+          <Text style={styles.retryText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const ratingText = cook.rating !== undefined && cook.rating !== null ? (Number(cook.rating).toFixed(1)) : '0.0';
+  const reviewCountText = cook.reviewCount ?? 0;
+  const cuisines = cook.cuisineTypes ?? [];
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} testID="cook-profile">
       <View style={styles.header}>
         <Image
           source={cook.avatar ? { uri: cook.avatar } : require('@/assets/images/icon.png')}
           style={styles.avatar}
           contentFit="cover"
+          testID="cook-avatar"
         />
-        
+
         <View style={styles.headerContent}>
-          <Text style={styles.name}>{cook.name}</Text>
-          
+          <Text style={styles.name} testID="cook-name">{cook.name}</Text>
+
           <View style={styles.ratingContainer}>
             <Star size={16} color={Colors.rating} fill={Colors.rating} />
-            <Text style={styles.rating}>
-              {cook.rating?.toFixed(1)} ({cook.reviewCount} reviews)
-            </Text>
+            <Text style={styles.rating}>{ratingText} ({reviewCountText} reviews)</Text>
           </View>
-          
+
           <View style={styles.locationContainer}>
             <MapPin size={16} color={Colors.subtext} />
-            <Text style={styles.location}>{cook.location?.address}</Text>
+            <Text style={styles.location}>{cook.location?.address ?? 'No address provided'}</Text>
           </View>
-          
+
           <View style={styles.cuisineContainer}>
-            {cook.cuisineTypes?.map((cuisine: string, index: number) => (
-              <View key={index} style={styles.cuisineTag}>
+            {cuisines.map((cuisine: string, index: number) => (
+              <View key={`${cuisine}-${index}`} style={styles.cuisineTag}>
                 <Text style={styles.cuisineText}>{cuisine}</Text>
               </View>
             ))}
           </View>
         </View>
       </View>
-      
+
       {!isOwnProfile && (
         <View style={styles.actionContainer}>
           <View style={styles.buttonRow}>
@@ -127,13 +149,15 @@ export default function CookProfileScreen() {
               style={styles.contactButton}
             />
             {isCustomer && (
-              <TouchableOpacity 
-                style={[styles.favoriteButtonLarge, isFavorite && styles.favoriteButtonActive]} 
+              <TouchableOpacity
+                style={[styles.favoriteButtonLarge, isFavorite && styles.favoriteButtonActive]}
                 onPress={handleFavoritePress}
+                testID="favorite-cook-button"
+                accessibilityRole="button"
               >
-                <Heart 
-                  size={24} 
-                  color={isFavorite ? Colors.white : Colors.error} 
+                <Heart
+                  size={24}
+                  color={isFavorite ? Colors.white : Colors.error}
                   fill={isFavorite ? Colors.white : 'transparent'}
                 />
               </TouchableOpacity>
@@ -141,17 +165,16 @@ export default function CookProfileScreen() {
           </View>
         </View>
       )}
-      
+
       <View style={styles.bioContainer}>
         <Text style={styles.sectionTitle}>About</Text>
-        <Text style={styles.bioText}>{cook.bio}</Text>
+        <Text style={styles.bioText}>{cook.bio ?? 'No bio yet.'}</Text>
       </View>
-      
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Available Meals</Text>
-        
         {cookMeals.length > 0 ? (
-          cookMeals.map(meal => (
+          cookMeals.map((meal) => (
             <MealCard key={meal.id} meal={meal} />
           ))
         ) : (
@@ -171,6 +194,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 24,
+  },
+  errorText: {
+    color: Colors.error,
+    fontSize: 16,
+    marginBottom: 12,
+  },
+  retryButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '600' as const,
   },
   header: {
     backgroundColor: Colors.white,
@@ -190,7 +230,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     color: Colors.text,
     marginBottom: 8,
   },
@@ -270,7 +310,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: Colors.text,
     marginBottom: 12,
   },
@@ -286,7 +326,7 @@ const styles = StyleSheet.create({
   noMealsText: {
     fontSize: 16,
     color: Colors.subtext,
-    fontStyle: 'italic',
+    fontStyle: 'italic' as const,
     textAlign: 'center',
     marginVertical: 24,
   },

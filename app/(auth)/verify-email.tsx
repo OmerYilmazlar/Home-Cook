@@ -45,38 +45,63 @@ export default function VerifyEmailScreen() {
       return;
     }
     
-    // Check if email looks like a test email
-    const isTestEmail = params.email.includes('@test.') || 
-                       params.email.includes('@example.') ||
-                       params.email.includes('@fake.') ||
-                       params.email.endsWith('.test');
-    
-    if (isTestEmail) {
-      Alert.alert(
-        'Test Email Detected', 
-        'Please use a real email address to avoid delivery issues.',
-        [
-          { text: 'OK', style: 'default' },
-          { 
-            text: 'Continue Anyway', 
-            style: 'destructive',
-            onPress: () => handleContinueAnyway()
-          }
-        ]
-      );
-      return;
-    }
-    
     setIsLoading(true);
     setError(null);
     
     try {
       console.log('📧 Sending verification code to:', params.email);
       
-      // For now, we'll simulate sending a verification code
-      // In a real implementation, you'd send an OTP via your backend
-      // Since Supabase doesn't have built-in OTP for signup verification,
-      // you'd need to implement this with a custom solution
+      // Generate a random 6-digit code for demo
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Create dummy HTML email template
+      const emailTemplate = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Verify Your Email - HomeCook</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #FF6B35; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+            .code { background: #fff; border: 2px solid #FF6B35; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px; }
+            .code-number { font-size: 32px; font-weight: bold; color: #FF6B35; letter-spacing: 4px; }
+            .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>🍳 HomeCook</h1>
+            <h2>Email Verification</h2>
+          </div>
+          <div class="content">
+            <h3>Welcome to HomeCook!</h3>
+            <p>Thank you for signing up. To complete your registration, please enter the verification code below in the app:</p>
+            
+            <div class="code">
+              <div class="code-number">${verificationCode}</div>
+              <p><strong>This code expires in 10 minutes</strong></p>
+            </div>
+            
+            <p>If you didn't request this verification, please ignore this email.</p>
+            
+            <p>Happy cooking!<br>The HomeCook Team</p>
+          </div>
+          <div class="footer">
+            <p>This is an automated message. Please do not reply to this email.</p>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      // Log the email template for demo purposes
+      console.log('📧 Email Template Generated:');
+      console.log('To:', params.email);
+      console.log('Subject: Verify Your Email - HomeCook');
+      console.log('Verification Code:', verificationCode);
+      console.log('HTML Template:', emailTemplate);
       
       // Simulate sending delay
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -229,7 +254,11 @@ export default function VerifyEmailScreen() {
           <Text style={styles.email}>{params.email}</Text>
           
           <Text style={styles.description}>
-            Please enter the code below to verify your email address.
+            Please enter the 6-digit code from the email we sent you.
+          </Text>
+          
+          <Text style={styles.demoNote}>
+            📧 Demo: Check the console logs for the verification code
           </Text>
           
           <View style={styles.form}>
@@ -384,5 +413,15 @@ const styles = StyleSheet.create({
     color: Colors.subtext,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  demoNote: {
+    fontSize: 12,
+    color: Colors.primary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginBottom: 16,
+    backgroundColor: '#FFF7ED',
+    padding: 8,
+    borderRadius: 6,
   },
 });

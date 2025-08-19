@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-import { getAddressSuggestions, validateAddressWithGoogle } from '@/utils/validation';
+import { getAddressSuggestions } from '@/utils/validation';
 import colors from '@/constants/colors';
 
 interface GooglePlacesInputProps {
   value: string;
   onChangeText: (text: string) => void;
-  onSelectAddress?: (address: string, coordinates?: { lat: number; lng: number }) => void;
+  onSelectAddress?: (address: string) => void;
   placeholder?: string;
   style?: any;
   error?: string;
@@ -25,7 +25,6 @@ export const GooglePlacesInput: React.FC<GooglePlacesInputProps> = ({
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [validationResult, setValidationResult] = useState<any>(null);
 
   // Debounced search for suggestions
   useEffect(() => {
@@ -52,33 +51,15 @@ export const GooglePlacesInput: React.FC<GooglePlacesInputProps> = ({
     return () => clearTimeout(timeoutId);
   }, [value]);
 
-  const handleSelectSuggestion = async (suggestion: string) => {
+  const handleSelectSuggestion = (suggestion: string) => {
     onChangeText(suggestion);
     setShowSuggestions(false);
     setSuggestions([]);
-
-    // Validate the selected address and get coordinates
-    if (onSelectAddress) {
-      setIsLoading(true);
-      try {
-        const validation = await validateAddressWithGoogle(suggestion);
-        setValidationResult(validation);
-        if (validation.isValid && validation.coordinates) {
-          onSelectAddress(suggestion, validation.coordinates);
-        } else {
-          onSelectAddress(suggestion);
-        }
-      } catch (error) {
-        console.warn('Error validating selected address:', error);
-        onSelectAddress(suggestion);
-      }
-      setIsLoading(false);
-    }
+    onSelectAddress?.(suggestion);
   };
 
   const handleTextChange = (text: string) => {
     onChangeText(text);
-    setValidationResult(null);
   };
 
   const handleBlur = () => {
@@ -100,8 +81,7 @@ export const GooglePlacesInput: React.FC<GooglePlacesInputProps> = ({
         <TextInput
           style={[
             styles.input,
-            error && styles.inputError,
-            validationResult?.isValid && styles.inputValid
+            error && styles.inputError
           ]}
           value={value}
           onChangeText={handleTextChange}
@@ -144,19 +124,6 @@ export const GooglePlacesInput: React.FC<GooglePlacesInputProps> = ({
       {/* Error message */}
       {error && (
         <Text style={styles.errorText}>{error}</Text>
-      )}
-
-      {/* Validation feedback */}
-      {validationResult?.isValid && validationResult.suggestion && (
-        <Text style={styles.validationText}>
-          ✓ Address verified: {validationResult.suggestion}
-        </Text>
-      )}
-
-      {validationResult?.error && (
-        <Text style={styles.errorText}>
-          {validationResult.error}
-        </Text>
       )}
     </View>
   );
@@ -232,11 +199,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: colors.error || '#FF6B6B',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  validationText: {
-    color: colors.success || '#51CF66',
     fontSize: 12,
     marginTop: 4,
   },

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
 import Colors from '@/constants/colors';
 import { CountryPicker } from './CountryPicker';
-import { countries, Country, formatPhoneWithCountry, detectCountryFromPhone } from '@/constants/countries';
+import { countries, Country } from '@/constants/countries';
 
 interface PhoneInputProps {
   label?: string;
@@ -23,50 +23,20 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   placeholder = "Enter phone number",
   style
 }) => {
-  // Default to UK since user mentioned UK number
+  // Default to UK
   const [selectedCountry, setSelectedCountry] = useState<Country>(
     countries.find(c => c.code === 'GB') || countries[0]
   );
 
-  // Auto-detect country from phone number
-  useEffect(() => {
-    if (value) {
-      const detectedCountry = detectCountryFromPhone(value);
-      if (detectedCountry && detectedCountry.code !== selectedCountry.code) {
-        setSelectedCountry(detectedCountry);
-        onCountryChange?.(detectedCountry);
-      }
-    }
-  }, [value, selectedCountry.code, onCountryChange]);
-
   const handleCountrySelect = (country: Country) => {
     setSelectedCountry(country);
     onCountryChange?.(country);
-    
-    // If there's already a phone number, reformat it for the new country
-    if (value) {
-      const cleanedNumber = value.replace(/\D/g, '');
-      if (cleanedNumber.length > 0) {
-        const formatted = formatPhoneWithCountry(cleanedNumber, country);
-        onChangeText(formatted);
-      }
-    } else {
-      // If no number, just set the country code
-      onChangeText(country.dialCode + ' ');
-    }
   };
 
   const handleTextChange = (text: string) => {
-    // Allow only digits, spaces, hyphens, parentheses, and plus sign
+    // Simple phone number input - just allow digits, spaces, and common phone characters
     const cleaned = text.replace(/[^\d\s\-\(\)\+]/g, '');
-    
-    // Auto-format based on selected country
-    if (cleaned.length > 0) {
-      const formatted = formatPhoneWithCountry(cleaned, selectedCountry);
-      onChangeText(formatted);
-    } else {
-      onChangeText('');
-    }
+    onChangeText(cleaned);
   };
 
   return (
@@ -74,13 +44,11 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       {label && <Text style={styles.label}>{label}</Text>}
       
       <View style={[styles.inputContainer, error && styles.inputError]}>
-        <View style={styles.countryPickerWrapper}>
-          <CountryPicker
-            selectedCountry={selectedCountry}
-            onSelectCountry={handleCountrySelect}
-            style={styles.countryPicker}
-          />
-        </View>
+        <CountryPicker
+          selectedCountry={selectedCountry}
+          onSelectCountry={handleCountrySelect}
+          style={styles.countryPicker}
+        />
         
         <TextInput
           style={styles.textInput}
@@ -111,30 +79,22 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'stretch',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: 12,
     backgroundColor: Colors.white,
     minHeight: 48,
-    overflow: 'hidden',
   },
   inputError: {
     borderColor: Colors.error,
-  },
-  countryPickerWrapper: {
-    backgroundColor: Colors.background,
-    borderRightWidth: 1,
-    borderRightColor: Colors.border,
-    justifyContent: 'center',
-    paddingHorizontal: 4,
   },
   countryPicker: {
     borderWidth: 0,
     borderRadius: 0,
     backgroundColor: 'transparent',
-    minHeight: 46,
-    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
   textInput: {
     flex: 1,
@@ -149,5 +109,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.error,
   },
-
 });

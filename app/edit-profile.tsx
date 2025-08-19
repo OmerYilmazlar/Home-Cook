@@ -29,6 +29,7 @@ export default function EditProfileScreen() {
   const [addressCountry, setAddressCountry] = useState<any>(null);
   const [addressCity, setAddressCity] = useState<string>((user?.location as any)?.city ?? '');
   const [addressState, setAddressState] = useState<string>((user?.location as any)?.state ?? '');
+  const [addressZip, setAddressZip] = useState<string>((user?.location as any)?.zip ?? '');
   const [addressStreet, setAddressStreet] = useState<string>((user?.location as any)?.address ?? '');
   const [addressFull, setAddressFull] = useState<string>((user?.location as any)?.address ?? '');
   
@@ -160,7 +161,7 @@ export default function EditProfileScreen() {
       
       // Only include address for cooks
       if (isCook) {
-        const composed = addressFull || [addressStreet?.trim(), addressCity?.trim(), addressCountry?.name].filter(Boolean).join(', ');
+        const composed = addressFull || [addressStreet?.trim(), addressCity?.trim(), addressZip?.trim(), addressCountry?.name].filter(Boolean).join(', ');
         console.log('🏠 Edit Profile: Address for cook:', composed);
         profileData.location = {
           ...user?.location,
@@ -306,7 +307,7 @@ export default function EditProfileScreen() {
             setPhone(text);
           }}
           error={errors.phone}
-          placeholder="Enter your phone number (optional)"
+          placeholder="phone number"
         />
         
         {isCook && (
@@ -316,12 +317,14 @@ export default function EditProfileScreen() {
               country={addressCountry}
               city={addressCity}
               stateProvince={addressState}
+              zipCode={addressZip}
               streetAddress={addressStreet}
               onChange={(next) => {
                 clearFieldError('address');
                 setAddressCountry(next.country as any);
                 setAddressCity(next.city);
                 setAddressState(next.stateProvince ?? '');
+                setAddressZip(next.zipCode ?? '');
                 setAddressStreet(next.streetAddress);
                 setAddressFull(next.fullAddress);
               }}

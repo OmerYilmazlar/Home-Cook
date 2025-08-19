@@ -4,42 +4,54 @@ import Colors from '@/constants/colors';
 import Input from '@/components/Input';
 import { CountryPicker } from '@/components/CountryPicker';
 import { Country, countries } from '@/constants/countries';
-import { getCitySuggestions } from '@/utils/validation';
+import { getCitySuggestions, getZipCodeSuggestions } from '@/utils/validation';
 
 interface AddressFieldsProps {
   country: Country | null;
   city: string;
   stateProvince?: string;
+  zipCode?: string;
   streetAddress: string;
-  onChange: (next: { country: Country | null; city: string; stateProvince?: string; streetAddress: string; fullAddress: string; }) => void;
+  onChange: (next: { country: Country | null; city: string; stateProvince?: string; zipCode?: string; streetAddress: string; fullAddress: string; }) => void;
   error?: string;
   testID?: string;
 }
 
-export default function AddressFields({ country, city, stateProvince, streetAddress, onChange, error, testID }: AddressFieldsProps) {
+export default function AddressFields({ country, city, stateProvince, zipCode, streetAddress, onChange, error, testID }: AddressFieldsProps) {
   const selected = useMemo(() => country ?? countries.find(c => c.code === 'GB') ?? null, [country]);
   const [cityQuery, setCityQuery] = useState<string>(city ?? '');
   const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
   const [showCitySuggestions, setShowCitySuggestions] = useState<boolean>(false);
+  const [cityValid, setCityValid] = useState<boolean>(true);
+
+  const [zipQuery, setZipQuery] = useState<string>(zipCode ?? '');
+  const [zipSuggestions, setZipSuggestions] = useState<string[]>([]);
+  const [showZipSuggestions, setShowZipSuggestions] = useState<boolean>(false);
 
   const fullAddress = useMemo(() => {
-    const parts = [streetAddress?.trim(), city?.trim(), selected?.name].filter(Boolean) as string[];
+    const parts = [streetAddress?.trim(), cityQuery?.trim(), zipQuery?.trim(), selected?.name].filter(Boolean) as string[];
     return parts.join(', ');
-  }, [streetAddress, city, selected]);
+  }, [streetAddress, cityQuery, zipQuery, selected]);
 
   const setCountry = (c: Country) => {
-    const next = { country: c, city, stateProvince, streetAddress, fullAddress };
+    const next = { country: c, city: cityQuery, stateProvince, zipCode: zipQuery, streetAddress, fullAddress };
     onChange(next);
   };
 
   const setCity = (v: string) => {
     setCityQuery(v);
-    const next = { country: selected, city: v, stateProvince, streetAddress, fullAddress: [streetAddress?.trim(), v?.trim(), selected?.name].filter(Boolean).join(', ') };
+    const next = { country: selected, city: v, stateProvince, zipCode: zipQuery, streetAddress, fullAddress: [streetAddress?.trim(), v?.trim(), zipQuery?.trim(), selected?.name].filter(Boolean).join(', ') };
+    onChange(next);
+  };
+
+  const setZip = (v: string) => {
+    setZipQuery(v);
+    const next = { country: selected, city: cityQuery, stateProvince, zipCode: v, streetAddress, fullAddress: [streetAddress?.trim(), cityQuery?.trim(), v?.trim(), selected?.name].filter(Boolean).join(', ') };
     onChange(next);
   };
 
   const setStreet = (v: string) => {
-    const next = { country: selected, city, stateProvince, streetAddress: v, fullAddress: [v?.trim(), city?.trim(), selected?.name].filter(Boolean).join(', ') };
+    const next = { country: selected, city: cityQuery, stateProvince, zipCode: zipQuery, streetAddress: v, fullAddress: [v?.trim(), cityQuery?.trim(), zipQuery?.trim(), selected?.name].filter(Boolean).join(', ') };
     onChange(next);
   };
 
@@ -48,6 +60,7 @@ export default function AddressFields({ country, city, stateProvince, streetAddr
     if (!q || q.trim().length < 2) {
       setCitySuggestions([]);
       setShowCitySuggestions(false);
+      setCityValid(true);
       return;
     }
     let isCancelled = false;
@@ -58,12 +71,15 @@ export default function AddressFields({ country, city, stateProvince, streetAddr
         if (!isCancelled) {
           setCitySuggestions(results);
           setShowCitySuggestions(results.length > 0);
+          const foundExact = results.some(r => r.toLowerCase() === q.toLowerCase());
+          setCityValid(foundExact || results.length > 0);
         }
       } catch (e) {
         console.log('City suggestions error', e);
         if (!isCancelled) {
           setCitySuggestions([]);
           setShowCitySuggestions(false);
+          setCityValid(true);
         }
       }
     }, 250);
@@ -73,9 +89,40 @@ export default function AddressFields({ country, city, stateProvince, streetAddr
     };
   }, [cityQuery, selected?.code]);
 
+  useEffect(() => {
+    const q = zipQuery ?? '';
+    if (!q || q.trim().length < 2 || !cityQuery) {
+      setZipSuggestions([]);
+      setShowZipSuggestions(false);
+      return;
+    }
+    let isCancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const cc = selected?.code ?? 'GB';
+        const results = await getZipCodeSuggestions(q.trim(), cityQuery.trim(), cc);
+        if (!isCancelled) {
+          setZipSuggestions(results);
+          setShowZipSuggestions(results.length > 0);
+        }
+      } catch (e) {
+        console.log('ZIP suggestions error', e);
+        if (!isCancelled) {
+          setZipSuggestions([]);
+          setShowZipSuggestions(false);
+        }
+      }
+    }, 250);
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [zipQuery, cityQuery, selected?.code]);
+
   const handleSelectCity = (name: string) => {
     setShowCitySuggestions(false);
     setCity(name);
+    setCityValid(true);
   };
 
   return (
@@ -88,7 +135,7 @@ export default function AddressFields({ country, city, stateProvince, streetAddr
       <View style={styles.step}>
         <Text style={styles.stepLabel}>City</Text>
         <View>
-          <Input value={city} onChangeText={setCity} placeholder="Enter city" testID="city-input" />
+          <Input value={cityQuery} onChangeText={setCity} placeholder="Enter city" testID="city-input" error={!cityValid ? 'Please select a valid city' : undefined} />
           {showCitySuggestions && citySuggestions.length > 0 ? (
             <View style={styles.suggestionsContainer} testID="city-suggestions">
               <FlatList
@@ -96,6 +143,30 @@ export default function AddressFields({ country, city, stateProvince, streetAddr
                 keyExtractor={(item, idx) => `${item}-${idx}`}
                 renderItem={({ item }) => (
                   <TouchableOpacity style={styles.suggestionItem} onPress={() => handleSelectCity(item)}>
+                    <Text style={styles.suggestionText}>{item}</Text>
+                  </TouchableOpacity>
+                )}
+                keyboardShouldPersistTaps="handled"
+              />
+            </View>
+          ) : null}
+        </View>
+      </View>
+
+      <View style={styles.step}>
+        <Text style={styles.stepLabel}>ZIP / Postcode</Text>
+        <View>
+          <Input value={zipQuery} onChangeText={setZip} placeholder="e.g. EN1 4HW" testID="zip-input" autoCapitalize="characters" />
+          {showZipSuggestions && zipSuggestions.length > 0 ? (
+            <View style={styles.suggestionsContainer} testID="zip-suggestions">
+              <FlatList
+                data={zipSuggestions}
+                keyExtractor={(item, idx) => `${item}-${idx}`}
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.suggestionItem} onPress={() => {
+                    setShowZipSuggestions(false);
+                    setZip(item);
+                  }}>
                     <Text style={styles.suggestionText}>{item}</Text>
                   </TouchableOpacity>
                 )}

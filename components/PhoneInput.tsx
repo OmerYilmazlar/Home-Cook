@@ -21,7 +21,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   onChangeText,
   onCountryChange,
   error,
-  placeholder = "Enter phone number",
+  placeholder = 'phone number',
   style,
   testID
 }) => {
@@ -35,9 +35,13 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   };
 
   const handleTextChange = (text: string) => {
-    // Simple phone number input - just allow digits, spaces, and common phone characters
-    const cleaned = text.replace(/[^\d\s\-\(\)\+]/g, '');
-    onChangeText(cleaned);
+    const allowed = text.replace(/[^\d\s\-\(\)\+]/g, '');
+    const digitCount = (allowed.match(/\d/g) ?? []).length;
+    if (digitCount > 15) {
+      return;
+    }
+    const plusNormalized = allowed.replace(/\++/g, '+');
+    onChangeText(plusNormalized);
   };
 
   return (
@@ -64,6 +68,8 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
           textAlignVertical="center"
           underlineColorAndroid="transparent"
           selectionColor={Colors.primary}
+          textContentType="telephoneNumber"
+          autoComplete="tel"
           testID="phone-text-input"
         />
       </View>

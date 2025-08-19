@@ -109,6 +109,35 @@ function convertAppMealToDbMeal(meal: Partial<Meal>) {
 
 // User operations
 export const userService = {
+  async checkEmailExists(email: string): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error checking email existence:', error);
+      return false;
+    }
+    
+    return !!data;
+  },
+
+  async checkUsernameExists(name: string): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('name', name)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error checking username existence:', error);
+      return false;
+    }
+    
+    return !!data;
+  },
   async getUserByEmail(email: string): Promise<Cook | Customer | null> {
     const { data, error } = await supabase
       .from('users')

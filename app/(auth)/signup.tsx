@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Alert, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Alert, KeyboardAvoidingView, ScrollView, Platform, Modal } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Mail, Lock, User } from 'lucide-react-native';
+import { Mail, Lock, User, AlertCircle, X } from 'lucide-react-native';
 import { useAuthStore } from '@/store/auth-store';
 import Colors from '@/constants/colors';
 import Input from '@/components/Input';
@@ -29,6 +29,8 @@ export default function SignupScreen() {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationError, setValidationError] = useState<{title: string, message: string} | null>(null);
   
   const validateForm = () => {
     let isValid = true;
@@ -80,14 +82,54 @@ export default function SignupScreen() {
   const handleSignup = async () => {
     if (!validateForm()) return;
     
-    router.push({
-      pathname: '/user-type',
-      params: {
-        name,
-        email,
-        password,
-      },
-    });
+    setIsValidating(true);
+    
+    try {
+      // Check if email already exists
+      const emailExists = await userService.checkEmailExists(email.toLowerCase().trim());
+      if (emailExists) {
+        setValidationError({
+          title: 'Email Already Registered',
+          message: 'An account with this email address already exists. Please use a different email or try logging in instead.'
+        });
+        setIsValidating(false);
+        return;
+      }
+      
+      // Check if username already exists
+      const usernameExists = await userService.checkUsernameExists(name.trim());
+      if (usernameExists) {
+        setValidationError({
+          title: 'Username Already Taken',
+          message: 'This username is already taken. Please choose a different name for your account.'
+        });
+        setIsValidating(false);
+        return;
+      }
+      
+      // If validation passes, proceed to user type selection
+      router.push({
+        pathname: '/user-type',
+        params: {
+          name: name.trim(),
+          email: email.toLowerCase().trim(),
+          password,
+        },
+      });
+      
+    } catch (error) {
+      console.error('Validation error:', error);
+      setValidationError({
+        title: 'Validation Error',
+        message: 'Unable to validate your information. Please check your connection and try again.'
+      });
+    } finally {
+      setIsValidating(false);
+    }
+  };
+  
+  const closeValidationError = () => {
+    setValidationError(null);
   };
   
   const handleLogin = () => {
@@ -202,8 +244,8 @@ export default function SignupScreen() {
         <Button
           title="Continue"
           onPress={handleSignup}
-          loading={isLoading}
-          disabled={isLoading}
+          loading={isLoading || isValidating}
+          disabled={isLoading || isValidating}
           style={styles.button}
           fullWidth
         />
@@ -237,6 +279,42 @@ export default function SignupScreen() {
       </View>
       </View>
       </ScrollView>
+      
+      {/* Error Modal */}
+      <Modal
+        visible={!!validationError}
+        transparent
+        animationType="fade"
+        onRequestClose={closeValidationError}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={styles.errorIconContainer}>
+                <AlertCircle size={24} color={Colors.error} />
+              </View>
+              <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={closeValidationError}
+              >
+                <X size={20} color={Colors.subtext} />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.modalTitle}>{validationError?.title}</Text>
+            <Text style={styles.modalMessage}>{validationError?.message}</Text>
+            
+            <View style={styles.modalActions}>
+              <Button
+                title="Got it"
+                onPress={closeValidationError}
+                style={styles.modalButton}
+                fullWidth
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -299,5 +377,62 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.primary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  errorIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FEF2F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: Colors.subtext,
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  modalActions: {
+    marginTop: 8,
+  },
+  modalButton: {
+    height: 48,
   },
 });

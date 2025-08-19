@@ -107,32 +107,16 @@ export default function SignupScreen() {
         return;
       }
       
-      // Check if this is a development/test scenario
-      const isDevelopment = __DEV__ || email.toLowerCase().includes('@test.') || email.toLowerCase().includes('@example.');
-      
-      if (isDevelopment) {
-        // Skip email verification in development
-        console.log('🚧 Development mode: Skipping email verification');
-        router.push({
-          pathname: '/user-type',
-          params: {
-            name: name.trim(),
-            email: email.toLowerCase().trim(),
-            password,
-            skipVerification: 'true'
-          },
-        });
-      } else {
-        // Production: proceed to email verification
-        router.push({
-          pathname: '/verify-email',
-          params: {
-            name: name.trim(),
-            email: email.toLowerCase().trim(),
-            password,
-          },
-        });
-      }
+      // Always proceed to email verification first
+      console.log('📧 Proceeding to email verification');
+      router.push({
+        pathname: '/verify-email',
+        params: {
+          name: name.trim(),
+          email: email.toLowerCase().trim(),
+          password,
+        },
+      });
       
     } catch (error) {
       console.error('Validation error:', error);

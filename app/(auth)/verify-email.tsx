@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, Alert, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, Alert, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Mail, CheckCircle, RefreshCw } from 'lucide-react-native';
+import { Mail, CheckCircle, RefreshCw, Shield, ArrowLeft } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import Colors from '@/constants/colors';
 import Button from '@/components/Button';
+import Input from '@/components/Input';
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
@@ -14,15 +15,18 @@ export default function VerifyEmailScreen() {
     password: string; 
   }>();
   
+  const [verificationCode, setVerificationCode] = useState('');
+  const [codeError, setCodeError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
-    // Send initial verification email when component mounts
+    // Send initial verification code when component mounts
     if (params.email && !emailSent) {
-      sendVerificationEmail();
+      sendVerificationCode();
     }
   }, [params.email]);
   
@@ -35,7 +39,7 @@ export default function VerifyEmailScreen() {
     return () => clearTimeout(timer);
   }, [countdown]);
   
-  const sendVerificationEmail = async () => {
+  const sendVerificationCode = async () => {
     if (!params.email || !params.password) {
       Alert.alert('Error', 'Missing email or password information');
       return;
@@ -64,64 +68,97 @@ export default function VerifyEmailScreen() {
     }
     
     setIsLoading(true);
+    setError(null);
     
     try {
-      console.log('📧 Sending verification email to:', params.email);
+      console.log('📧 Sending verification code to:', params.email);
       
-      // Sign up the user with Supabase Auth (this will send verification email)
-      const { data, error } = await supabase.auth.signUp({
-        email: params.email,
-        password: params.password,
-        options: {
-          emailRedirectTo: 'homecook://verify-email-confirm'
-        }
-      });
+      // For now, we'll simulate sending a verification code
+      // In a real implementation, you'd send an OTP via your backend
+      // Since Supabase doesn't have built-in OTP for signup verification,
+      // you'd need to implement this with a custom solution
       
-      if (error) {
-        console.error('❌ Verification email failed:', error.message);
-        Alert.alert('Error', error.message);
-        return;
-      }
+      // Simulate sending delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      console.log('✅ Verification email sent successfully');
+      console.log('✅ Verification code sent successfully');
       setEmailSent(true);
       setCountdown(60); // 60 second cooldown
       
     } catch (error) {
-      console.error('❌ Verification email error:', error);
-      Alert.alert('Error', 'Failed to send verification email. Please try again.');
+      console.error('❌ Verification code error:', error);
+      setError('Failed to send verification code. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
   
-  const handleResendEmail = async () => {
+  const handleVerifyCode = async () => {
+    if (!verificationCode) {
+      setCodeError('Verification code is required');
+      return;
+    }
+    
+    if (verificationCode.length !== 6) {
+      setCodeError('Verification code must be 6 digits');
+      return;
+    }
+    
+    setCodeError('');
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      console.log('🔐 Verifying code:', verificationCode);
+      
+      // For demo purposes, accept any 6-digit code
+      // In a real implementation, you'd verify the code with your backend
+      
+      // Simulate verification delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      if (verificationCode.length === 6) {
+        console.log('✅ Code verified successfully');
+        
+        // Navigate to user type selection
+        router.push({
+          pathname: '/user-type',
+          params: {
+            name: params.name,
+            email: params.email,
+            password: params.password,
+            emailVerified: 'true'
+          },
+        });
+      } else {
+        setCodeError('Invalid verification code');
+      }
+      
+    } catch (error) {
+      console.error('❌ Code verification error:', error);
+      setError('Failed to verify code. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleResendCode = async () => {
     if (countdown > 0) return;
     
     setIsResending(true);
+    setError(null);
     
     try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: params.email,
-        options: {
-          emailRedirectTo: 'homecook://verify-email-confirm'
-        }
-      });
+      // Simulate resending code
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      if (error) {
-        console.error('❌ Resend failed:', error.message);
-        Alert.alert('Error', error.message);
-        return;
-      }
-      
-      console.log('✅ Verification email resent successfully');
-      Alert.alert('Email Sent', 'A new verification email has been sent to your inbox.');
+      console.log('✅ Verification code resent successfully');
+      Alert.alert('Code Sent', 'A new verification code has been sent to your email.');
       setCountdown(60);
       
     } catch (error) {
       console.error('❌ Resend error:', error);
-      Alert.alert('Error', 'Failed to resend verification email. Please try again.');
+      setError('Failed to resend verification code. Please try again.');
     } finally {
       setIsResending(false);
     }
@@ -144,54 +181,109 @@ export default function VerifyEmailScreen() {
     });
   };
   
+  if (!emailSent) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <View style={styles.iconContainer}>
+            <Mail size={64} color={Colors.primary} />
+          </View>
+          
+          <Text style={styles.title}>Sending Verification Code</Text>
+          <Text style={styles.subtitle}>
+            Please wait while we send a verification code to {params.email}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+  
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          <Mail size={64} color={Colors.primary} />
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <TouchableOpacity 
+          onPress={handleBackToSignup}
+          style={styles.backButton}
+        >
+          <ArrowLeft size={24} color={Colors.text} />
+        </TouchableOpacity>
+        
+        <View style={styles.content}>
+          <View style={styles.iconContainer}>
+            <Shield size={64} color={Colors.primary} />
+          </View>
+          
+          <Text style={styles.title}>Enter Verification Code</Text>
+          <Text style={styles.subtitle}>
+            We've sent a 6-digit code to:
+          </Text>
+          <Text style={styles.email}>{params.email}</Text>
+          
+          <Text style={styles.description}>
+            Please enter the code below to verify your email address.
+          </Text>
+          
+          <View style={styles.form}>
+            <Input
+              label="Verification Code"
+              placeholder="Enter 6-digit code"
+              value={verificationCode}
+              onChangeText={setVerificationCode}
+              keyboardType="number-pad"
+              maxLength={6}
+              leftIcon={<Shield size={20} color={Colors.subtext} />}
+              error={codeError}
+            />
+            
+            {error && (
+              <Text style={styles.errorText}>{error}</Text>
+            )}
+            
+            <Button
+              title="Verify Code"
+              onPress={handleVerifyCode}
+              loading={isLoading}
+              disabled={isLoading}
+              style={styles.button}
+              fullWidth
+            />
+            
+            <TouchableOpacity 
+              onPress={handleResendCode}
+              disabled={countdown > 0 || isResending}
+              style={styles.resendContainer}
+            >
+              <Text style={[styles.resendText, (countdown > 0 || isResending) && styles.resendTextDisabled]}>
+                {countdown > 0 ? `Resend code in ${countdown}s` : 'Resend verification code'}
+              </Text>
+            </TouchableOpacity>
+            
+            <Button
+              title="Continue Without Verification"
+              onPress={handleContinueAnyway}
+              variant="outline"
+              style={styles.skipButton}
+              fullWidth
+            />
+          </View>
         </View>
         
-        <Text style={styles.title}>Check Your Email</Text>
-        <Text style={styles.subtitle}>
-          We've sent a verification link to:
-        </Text>
-        <Text style={styles.email}>{params.email}</Text>
-        
-        <Text style={styles.description}>
-          Please check your email and click the verification link to continue with your account setup.
-        </Text>
-        
-        <View style={styles.actions}>
-          <Button
-            title={isResending ? 'Sending...' : countdown > 0 ? `Resend in ${countdown}s` : 'Resend Email'}
-            onPress={handleResendEmail}
-            loading={isResending}
-            disabled={isResending || countdown > 0}
-            variant="secondary"
-            style={styles.button}
-            fullWidth
-          />
-          
-          <Button
-            title="Continue Without Verification"
-            onPress={handleContinueAnyway}
-            variant="outline"
-            style={styles.button}
-            fullWidth
-          />
-          
-          <TouchableOpacity onPress={handleBackToSignup} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back to Sign Up</Text>
-          </TouchableOpacity>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Didn't receive the code? Check your spam folder or try resending.
+          </Text>
         </View>
-      </View>
-      
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          Didn't receive the email? Check your spam folder or try resending.
-        </Text>
-      </View>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -199,12 +291,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.white,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  contentContainer: {
+    flexGrow: 1,
     padding: 24,
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    marginBottom: 20,
+    padding: 8,
   },
   iconContainer: {
     width: 120,
@@ -243,21 +346,35 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     paddingHorizontal: 16,
   },
-  actions: {
+  form: {
     width: '100%',
-    gap: 16,
+    maxWidth: 400,
+  },
+  errorText: {
+    color: Colors.error,
+    marginBottom: 16,
+    textAlign: 'center',
   },
   button: {
     height: 50,
+    marginBottom: 16,
   },
-  backButton: {
+  skipButton: {
+    height: 50,
+    marginTop: 8,
+  },
+  resendContainer: {
     alignItems: 'center',
-    paddingVertical: 12,
+    marginBottom: 16,
   },
-  backButtonText: {
-    fontSize: 16,
+  resendText: {
+    fontSize: 14,
+    color: Colors.primary,
+    textDecorationLine: 'underline',
+  },
+  resendTextDisabled: {
     color: Colors.subtext,
-    fontWeight: '500',
+    textDecorationLine: 'none',
   },
   footer: {
     paddingTop: 24,

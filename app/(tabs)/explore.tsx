@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, TextInput, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Platform } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useTheme } from '@/store/theme-store';
 import { useMealsStore } from '@/store/meals-store';
@@ -7,6 +7,7 @@ import { Filter, Star, List as ListIcon, Map as MapIcon, Search } from 'lucide-r
 import Colors from '@/constants/colors';
 import { cuisines } from '@/mocks/cuisines';
 import CustomMapView from '@/components/MapView';
+import { Image } from 'expo-image';
 
 export default function ExploreScreen() {
   const { colors } = useTheme();
@@ -50,7 +51,13 @@ export default function ExploreScreen() {
       testID={`meal-card-${item.id}`}
     >
       {item.images?.[0] ? (
-        <Image source={{ uri: item.images[0] }} style={styles.image} />
+        <Image
+          source={{ uri: item.images[0] }}
+          style={styles.image}
+          contentFit="cover"
+          transition={150}
+          testID={`meal-image-${item.id}`}
+        />
       ) : (
         <View style={[styles.image, styles.placeholder, { backgroundColor: colors.border }]} />
       )}

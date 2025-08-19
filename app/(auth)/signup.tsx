@@ -107,15 +107,32 @@ export default function SignupScreen() {
         return;
       }
       
-      // If validation passes, proceed to email verification
-      router.push({
-        pathname: '/verify-email',
-        params: {
-          name: name.trim(),
-          email: email.toLowerCase().trim(),
-          password,
-        },
-      });
+      // Check if this is a development/test scenario
+      const isDevelopment = __DEV__ || email.toLowerCase().includes('@test.') || email.toLowerCase().includes('@example.');
+      
+      if (isDevelopment) {
+        // Skip email verification in development
+        console.log('🚧 Development mode: Skipping email verification');
+        router.push({
+          pathname: '/user-type',
+          params: {
+            name: name.trim(),
+            email: email.toLowerCase().trim(),
+            password,
+            skipVerification: 'true'
+          },
+        });
+      } else {
+        // Production: proceed to email verification
+        router.push({
+          pathname: '/verify-email',
+          params: {
+            name: name.trim(),
+            email: email.toLowerCase().trim(),
+            password,
+          },
+        });
+      }
       
     } catch (error) {
       console.error('Validation error:', error);
@@ -136,47 +153,7 @@ export default function SignupScreen() {
     router.push('/login');
   };
   
-  const handleTestSignupAlex = async () => {
-    console.log('🧪 Testing customer signup with Alex...');
-    
-    try {
-      // Navigate to user-type with Alex's data
-      router.push({
-        pathname: '/user-type',
-        params: {
-          name: 'Alex Customer',
-          email: 'alex@test.com',
-          password: 'password123',
-          testUserType: 'customer'
-        },
-      });
-      
-    } catch (error) {
-      console.error('❌ Alex signup failed:', error);
-      Alert.alert('Test Failed', error instanceof Error ? error.message : 'Unknown error');
-    }
-  };
 
-  const handleTestSignupMaria = async () => {
-    console.log('🧪 Testing cook signup with Maria...');
-    
-    try {
-      // Navigate to user-type with Maria's data
-      router.push({
-        pathname: '/user-type',
-        params: {
-          name: 'Maria Cook',
-          email: 'maria@test.com',
-          password: 'password123',
-          testUserType: 'cook'
-        },
-      });
-      
-    } catch (error) {
-      console.error('❌ Maria signup failed:', error);
-      Alert.alert('Test Failed', error instanceof Error ? error.message : 'Unknown error');
-    }
-  };
   
   return (
     <KeyboardAvoidingView 
@@ -250,25 +227,7 @@ export default function SignupScreen() {
           fullWidth
         />
         
-        <Button
-          title="🧪 Test Alex (Customer)"
-          onPress={handleTestSignupAlex}
-          variant="secondary"
-          loading={isLoading}
-          disabled={isLoading}
-          style={styles.button}
-          fullWidth
-        />
-        
-        <Button
-          title="🧪 Test Maria (Cook)"
-          onPress={handleTestSignupMaria}
-          variant="secondary"
-          loading={isLoading}
-          disabled={isLoading}
-          style={styles.button}
-          fullWidth
-        />
+
       </View>
       
       <View style={styles.footer}>

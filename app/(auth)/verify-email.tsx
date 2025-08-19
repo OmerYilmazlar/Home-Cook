@@ -41,6 +41,28 @@ export default function VerifyEmailScreen() {
       return;
     }
     
+    // Check if email looks like a test email
+    const isTestEmail = params.email.includes('@test.') || 
+                       params.email.includes('@example.') ||
+                       params.email.includes('@fake.') ||
+                       params.email.endsWith('.test');
+    
+    if (isTestEmail) {
+      Alert.alert(
+        'Test Email Detected', 
+        'Please use a real email address to avoid delivery issues.',
+        [
+          { text: 'OK', style: 'default' },
+          { 
+            text: 'Continue Anyway', 
+            style: 'destructive',
+            onPress: () => handleContinueAnyway()
+          }
+        ]
+      );
+      return;
+    }
+    
     setIsLoading(true);
     
     try {

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Tabs, Redirect } from 'expo-router';
 import { View, ActivityIndicator, Text, StyleSheet, AppState } from 'react-native';
-import { Home, MessageCircle, ShoppingBag, User } from 'lucide-react-native';
+import { Home, MessageCircle, ShoppingBag, User, Search } from 'lucide-react-native';
 // Import removed as we're using the theme context
 import { useAuthStore } from '@/store/auth-store';
 import { useMessagingStore } from '@/store/messaging-store';
@@ -117,7 +117,21 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Home size={24} color={color} />,
         }}
       />
-      
+
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: 'Explore',
+          tabBarIcon: ({ color }) => <Search size={24} color={color} />,
+        }}
+      />
+
+      <Tabs.Screen
+        name="explore-map"
+        options={{
+          href: null,
+        }}
+      />
 
       <Tabs.Screen
         name="messages"

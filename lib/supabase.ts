@@ -7,14 +7,9 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 // Configure auth settings
 const authConfig = {
   auth: {
-    // Configure redirect URL for password reset
-    redirectTo: Platform.select({
-      web: `${window?.location?.origin}/reset-password-confirm`,
-      default: 'homecook://reset-password-confirm'
-    }),
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: Platform.OS === 'web'
   }
 };
 

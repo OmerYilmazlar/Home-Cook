@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, TouchableOpacity, Alert, Platform, KeyboardAvoi
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Lock, Eye, EyeOff } from 'lucide-react-native';
 import { useAuthStore } from '@/store/auth-store';
+import { supabase } from '@/lib/supabase';
 import Colors from '@/constants/colors';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
@@ -10,7 +11,7 @@ import { validatePassword } from '@/utils/validation';
 
 export default function ResetPasswordConfirmScreen() {
   const router = useRouter();
-  const { updatePassword, isLoading, error, clearError } = useAuthStore();
+  const { isLoading, error, clearError } = useAuthStore();
   const params = useLocalSearchParams();
   
   const [password, setPassword] = useState('');
@@ -19,9 +20,26 @@ export default function ResetPasswordConfirmScreen() {
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [sessionError, setSessionError] = useState('');
   
   useEffect(() => {
     clearError();
+    
+    // Check if we have a valid session for password reset
+    const checkSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error || !session) {
+          setSessionError('Invalid or expired reset link. Please request a new password reset.');
+        }
+      } catch (err) {
+        console.error('Session check error:', err);
+        setSessionError('Unable to verify reset session. Please try again.');
+      }
+    };
+    
+    checkSession();
   }, [clearError]);
   
   const validateForm = () => {
@@ -54,21 +72,76 @@ export default function ResetPasswordConfirmScreen() {
     if (!validateForm()) return;
     
     try {
-      await updatePassword(password);
+      setIsUpdating(true);
+      
+      console.log('🔐 Reset Password: Updating password...');
+      
+      const { error } = await supabase.auth.updateUser({
+        password: password
+      });
+      
+      if (error) {
+        console.log('❌ Reset Password: Password update failed:', error.message);
+        Alert.alert('Update Failed', error.message);
+        return;
+      }
+      
+      console.log('✅ Reset Password: Password updated successfully');
+      
       Alert.alert(
         'Password Updated',
         'Your password has been successfully updated. You can now log in with your new password.',
         [
           {
             text: 'OK',
-            onPress: () => router.replace('/(auth)/login')
+            onPress: () => {
+              // Sign out to clear the session and redirect to login
+              supabase.auth.signOut().then(() => {
+                router.replace('/(auth)/login');
+              });
+            }
           }
         ]
       );
     } catch (error) {
+      console.error('❌ Reset Password: Update error:', error);
       Alert.alert('Update Failed', error instanceof Error ? error.message : 'An error occurred');
+    } finally {
+      setIsUpdating(false);
     }
   };
+  
+  // Show error if session is invalid
+  if (sessionError) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.contentContainer}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Reset Link Invalid</Text>
+            <Text style={styles.subtitle}>
+              {sessionError}
+            </Text>
+          </View>
+          
+          <View style={styles.form}>
+            <Button
+              title="Request New Reset Link"
+              onPress={() => router.replace('/(auth)/forgot-password')}
+              style={styles.button}
+              fullWidth
+            />
+            
+            <TouchableOpacity 
+              onPress={() => router.replace('/(auth)/login')}
+              style={styles.linkContainer}
+            >
+              <Text style={styles.linkText}>Back to Login</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
   
   return (
     <KeyboardAvoidingView 
@@ -144,8 +217,8 @@ export default function ResetPasswordConfirmScreen() {
           <Button
             title="Update Password"
             onPress={handleUpdatePassword}
-            loading={isLoading}
-            disabled={isLoading}
+            loading={isUpdating}
+            disabled={isUpdating}
             style={styles.button}
             fullWidth
           />
@@ -224,5 +297,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.primary,
+  },
+  linkContainer: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  linkText: {
+    fontSize: 14,
+    color: Colors.primary,
+    textDecorationLine: 'underline',
   },
 });

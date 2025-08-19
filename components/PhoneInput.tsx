@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Platform } from 'react-native';
 import Colors from '@/constants/colors';
 import { CountryPicker } from './CountryPicker';
 import { countries, Country } from '@/constants/countries';
@@ -12,6 +12,7 @@ interface PhoneInputProps {
   error?: string;
   placeholder?: string;
   style?: any;
+  testID?: string;
 }
 
 export const PhoneInput: React.FC<PhoneInputProps> = ({
@@ -21,7 +22,8 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   onCountryChange,
   error,
   placeholder = "Enter phone number",
-  style
+  style,
+  testID
 }) => {
   // Default to UK
   const [selectedCountry, setSelectedCountry] = useState<Country>(
@@ -40,16 +42,16 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   };
 
   return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, style]} testID={testID ?? 'phone-input-container'}>
       {label && <Text style={styles.label}>{label}</Text>}
       
-      <View style={[styles.inputContainer, error && styles.inputError]}>
+      <View style={[styles.inputContainer, error ? styles.inputError : null]} testID="phone-input-wrapper">
         <CountryPicker
           selectedCountry={selectedCountry}
           onSelectCountry={handleCountrySelect}
           style={styles.countryPicker}
         />
-        
+        <View style={styles.divider} />
         <TextInput
           style={styles.textInput}
           value={value}
@@ -59,6 +61,10 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
           keyboardType="phone-pad"
           autoCorrect={false}
           autoCapitalize="none"
+          textAlignVertical="center"
+          underlineColorAndroid="transparent"
+          selectionColor={Colors.primary}
+          testID="phone-text-input"
         />
       </View>
       
@@ -84,7 +90,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderRadius: 12,
     backgroundColor: Colors.white,
-    minHeight: 48,
+    minHeight: 52,
   },
   inputError: {
     borderColor: Colors.error,
@@ -94,13 +100,15 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     backgroundColor: 'transparent',
     paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingVertical: Platform.select({ ios: 12, android: 8, default: 12 }),
   },
   textInput: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: Platform.select({ ios: 12, android: 0, default: 12 }),
+    height: 52,
     fontSize: 16,
+    lineHeight: 22,
     color: Colors.text,
     backgroundColor: Colors.white,
   },
@@ -108,5 +116,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 12,
     color: Colors.error,
+  },
+  divider: {
+    width: 1,
+    height: 32,
+    backgroundColor: Colors.border,
   },
 });

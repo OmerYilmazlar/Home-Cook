@@ -3,13 +3,13 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform, 
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, MapPin } from 'lucide-react-native';
+import { Camera } from 'lucide-react-native';
 import { useAuthStore } from '@/store/auth-store';
 import Colors from '@/constants/colors';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
 import { PhoneInput } from '@/components/PhoneInput';
-
+import AddressFields from '@/components/AddressFields';
 import { validateBio } from '@/utils/validation';
 
 
@@ -25,8 +25,12 @@ export default function EditProfileScreen() {
   const [bio, setBio] = useState(user?.bio || '');
   const [avatar, setAvatar] = useState(user?.avatar || '');
 
-  // Simple address state - no validation
-  const [address, setAddress] = useState(user?.location?.address || '');
+  // Step-by-step address without zip/full validation
+  const [addressCountry, setAddressCountry] = useState<any>(null);
+  const [addressCity, setAddressCity] = useState<string>((user?.location as any)?.city ?? '');
+  const [addressState, setAddressState] = useState<string>((user?.location as any)?.state ?? '');
+  const [addressStreet, setAddressStreet] = useState<string>((user?.location as any)?.address ?? '');
+  const [addressFull, setAddressFull] = useState<string>((user?.location as any)?.address ?? '');
   
 
   
@@ -96,7 +100,7 @@ export default function EditProfileScreen() {
     // Phone is now optional - no validation required
     
     if (isCook) {
-      if (!address) newErrors.address = 'Address is required for cooks';
+      if (!addressStreet || !addressCity) newErrors.address = 'Address is required for cooks';
     }
     
     // Enhanced bio validation with word limit
@@ -137,7 +141,7 @@ export default function EditProfileScreen() {
   const handleSubmit = async () => {
     console.log('🔍 Edit Profile: Starting form submission...');
     console.log('🔍 Edit Profile: Current form data:', { 
-      name, email, phone, bio, avatar, address 
+      name, email, phone, bio, avatar, addressCountry, addressCity, addressState, addressStreet, addressFull 
     });
     
     if (!validateForm()) {
@@ -156,11 +160,15 @@ export default function EditProfileScreen() {
       
       // Only include address for cooks
       if (isCook) {
-        console.log('🏠 Edit Profile: Address for cook:', address);
+        const composed = addressFull || [addressStreet?.trim(), addressCity?.trim(), addressCountry?.name].filter(Boolean).join(', ');
+        console.log('🏠 Edit Profile: Address for cook:', composed);
         profileData.location = {
           ...user?.location,
-          address: address,
-        };
+          address: composed,
+          city: addressCity,
+          state: addressState,
+          country: addressCountry?.code,
+        } as any;
       }
       
       console.log('📤 Edit Profile: Sending profile data:', profileData);
@@ -302,19 +310,25 @@ export default function EditProfileScreen() {
         />
         
         {isCook && (
-          <Input
-            label="Address"
-            placeholder="Enter your full address"
-            value={address}
-            onChangeText={(text) => {
-              clearFieldError('address');
-              setAddress(text);
-            }}
-            leftIcon={<MapPin size={20} color={Colors.subtext} />}
-            error={errors.address}
-            multiline
-            numberOfLines={2}
-          />
+          <View style={{ marginTop: 8 }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: Colors.text, marginBottom: 8 }}>Business Address</Text>
+            <AddressFields
+              country={addressCountry}
+              city={addressCity}
+              stateProvince={addressState}
+              streetAddress={addressStreet}
+              onChange={(next) => {
+                clearFieldError('address');
+                setAddressCountry(next.country as any);
+                setAddressCity(next.city);
+                setAddressState(next.stateProvince ?? '');
+                setAddressStreet(next.streetAddress);
+                setAddressFull(next.fullAddress);
+              }}
+              error={errors.address}
+              testID="address-fields"
+            />
+          </View>
         )}
         
         <View style={styles.bioInputContainer}>

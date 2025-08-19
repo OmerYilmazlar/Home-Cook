@@ -107,9 +107,9 @@ export default function SignupScreen() {
         return;
       }
       
-      // If validation passes, proceed to user type selection
+      // If validation passes, proceed to email verification
       router.push({
-        pathname: '/user-type',
+        pathname: '/verify-email',
         params: {
           name: name.trim(),
           email: email.toLowerCase().trim(),

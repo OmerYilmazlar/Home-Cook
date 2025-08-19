@@ -97,30 +97,42 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
             userType
           });
           
-          // First, create the auth user with Supabase Auth
-          console.log('🔐 Auth Store: Creating Supabase auth user...');
-          const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: userData.email!,
-            password: password
-          });
+          // Check if user already exists in Supabase Auth (from email verification)
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
           
-          if (authError) {
-            console.log('❌ Auth Store: Supabase auth signup failed:', authError.message);
-            throw new Error(authError.message);
+          let authUserId: string;
+          
+          if (session?.user && session.user.email === userData.email) {
+            // User already authenticated via email verification
+            console.log('✅ Auth Store: User already authenticated via email verification:', session.user.id);
+            authUserId = session.user.id;
+          } else {
+            // Create new auth user
+            console.log('🔐 Auth Store: Creating Supabase auth user...');
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+              email: userData.email!,
+              password: password
+            });
+            
+            if (authError) {
+              console.log('❌ Auth Store: Supabase auth signup failed:', authError.message);
+              throw new Error(authError.message);
+            }
+            
+            if (!authData.user) {
+              console.log('❌ Auth Store: No user returned from auth signup');
+              throw new Error('Failed to create authentication account');
+            }
+            
+            console.log('✅ Auth Store: Supabase auth user created:', authData.user.id);
+            authUserId = authData.user.id;
           }
-          
-          if (!authData.user) {
-            console.log('❌ Auth Store: No user returned from auth signup');
-            throw new Error('Failed to create authentication account');
-          }
-          
-          console.log('✅ Auth Store: Supabase auth user created:', authData.user.id);
           
           // Now create the user profile in our users table using the auth user ID
           console.log('👤 Auth Store: Creating user profile...');
           const newUser = await userService.createUser({
             ...userData,
-            id: authData.user.id // Use the Supabase auth user ID
+            id: authUserId // Use the Supabase auth user ID
           }, userType);
           
           console.log('✅ Auth Store: User profile created successfully:', {

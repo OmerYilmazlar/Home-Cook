@@ -13,7 +13,8 @@ export default function UserTypeScreen() {
     name: string; 
     email: string; 
     password: string; 
-    testUserType?: 'cook' | 'customer' 
+    testUserType?: 'cook' | 'customer';
+    skipVerification?: string;
   }>();
   const { signup, isLoading } = useAuthStore();
   const [signupError, setSignupError] = useState<{title: string, message: string} | null>(null);

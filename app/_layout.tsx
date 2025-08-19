@@ -111,7 +111,7 @@ function ThemedStack() {
     }
   }, [isLoaded, initializeNotifications]);
   
-  // Handle deep links for password reset
+  // Handle deep links for password reset and email verification
   useEffect(() => {
     const handleDeepLink = (url: string) => {
       console.log('Deep link received:', url);
@@ -136,6 +136,32 @@ function ThemedStack() {
               console.error('Error setting session from deep link:', error);
             } else {
               console.log('Session set successfully from deep link');
+            }
+          });
+        }
+      }
+      
+      // Handle email verification deep links
+      if (url.includes('verify-email-confirm') || url.includes('type=signup')) {
+        console.log('Email verification deep link detected');
+        // Extract URL parameters
+        const urlObj = new URL(url.replace(/^(homecook|myapp):\/\//, 'https://temp.com/'));
+        const params = new URLSearchParams(urlObj.search || urlObj.hash.substring(1));
+        
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        const type = params.get('type');
+        
+        if (type === 'signup' && accessToken && refreshToken) {
+          console.log('Email verification tokens found, setting session...');
+          supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          }).then(({ error }) => {
+            if (error) {
+              console.error('Error setting session from email verification:', error);
+            } else {
+              console.log('Session set successfully from email verification');
             }
           });
         }
@@ -304,6 +330,13 @@ function ThemedStack() {
           name="reset-password-confirm" 
           options={{ 
             title: "Reset Password",
+            presentation: "modal",
+          }} 
+        />
+        <Stack.Screen 
+          name="verify-email-confirm" 
+          options={{ 
+            headerShown: false,
             presentation: "modal",
           }} 
         />

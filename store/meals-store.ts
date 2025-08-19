@@ -225,10 +225,8 @@ export const useMealsStore = create<MealsState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      // Delete meal from Supabase
       await mealService.deleteMeal(id);
       
-      // Remove from persistent meals array
       persistentMeals = persistentMeals.filter(meal => meal.id !== id);
       
       set(state => ({ 
@@ -238,10 +236,9 @@ export const useMealsStore = create<MealsState>((set, get) => ({
         isLoading: false 
       }));
     } catch (error) {
-      set({ 
-        error: error instanceof Error ? error.message : 'Failed to delete meal', 
-        isLoading: false 
-      });
+      const message = error instanceof Error ? error.message : 'Failed to delete meal';
+      set({ error: message, isLoading: false });
+      throw new Error(message);
     }
   },
 

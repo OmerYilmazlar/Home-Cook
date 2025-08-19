@@ -336,12 +336,13 @@ export default function HomeScreen() {
               <View key={meal.id}>
                 <MealCard meal={meal} />
                 {isCook && user?.id === meal.cookId && (
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingHorizontal: 4 }}>
+                  <View style={styles.mealActions}>
                     <Button
                       title="Edit"
                       variant="outline"
                       size="small"
                       onPress={() => handleEditMeal(meal.id)}
+                      style={styles.actionButton}
                       testID={`home-edit-${meal.id}`}
                     />
                     <Button
@@ -349,7 +350,7 @@ export default function HomeScreen() {
                       variant="outline"
                       size="small"
                       onPress={() => handleDeleteMeal(meal.id, meal.name)}
-                      style={{ borderColor: Colors.error }}
+                      style={[styles.actionButton, styles.deleteButton]}
                       testID={`home-delete-${meal.id}`}
                     />
                   </View>
@@ -572,6 +573,19 @@ const styles = StyleSheet.create({
   },
   cooksContainer: {
     gap: 20,
+  },
+  mealActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingHorizontal: 16,
+  },
+  actionButton: {
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  deleteButton: {
+    borderColor: Colors.error,
   },
   emptyState: {
     alignItems: 'center',

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { StyleSheet, View, Text, Pressable } from 'react-native';
+import { StyleSheet, View, Text, Pressable, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Star, Clock } from 'lucide-react-native';
@@ -20,8 +20,10 @@ export default function MealCard({ meal, compact = false, onPress, showCookInfo 
   const initialUri = useMemo(() => {
     const first = (meal.images && meal.images.length > 0) ? meal.images[0] : undefined;
     const isHttp = typeof first === 'string' && /^https?:\/\//.test(first);
-    const sanitized = isHttp ? first as string : fallbackUri;
-    return sanitized;
+    const isLocal = typeof first === 'string' && /^(file|content):\/\//.test(first);
+    if (isHttp) return first as string;
+    if (Platform.OS !== 'web' && isLocal) return first as string;
+    return fallbackUri;
   }, [meal.images]);
 
   const [imageUri, setImageUri] = useState<string>(initialUri);
@@ -50,7 +52,6 @@ export default function MealCard({ meal, compact = false, onPress, showCookInfo 
           style={[styles.image, compact && styles.compactImage]}
           contentFit="cover"
           transition={200}
-          placeholder={fallbackUri}
           onError={handleImageError}
           accessibilityLabel={`Image of ${meal.name}`}
           testID="meal-card-image"

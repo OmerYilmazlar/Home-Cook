@@ -15,6 +15,7 @@ interface ButtonProps {
   fullWidth?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  testID?: string;
 }
 
 export default function Button({
@@ -29,6 +30,7 @@ export default function Button({
   fullWidth = false,
   leftIcon,
   rightIcon,
+  testID,
 }: ButtonProps) {
   const { colors, playSound } = useTheme();
   
@@ -140,6 +142,7 @@ export default function Button({
       onPress={handlePress}
       disabled={disabled || loading}
       activeOpacity={0.8}
+      testID={testID}
     >
       {renderContent()}
     </TouchableOpacity>

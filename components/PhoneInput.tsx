@@ -74,11 +74,13 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       {label && <Text style={styles.label}>{label}</Text>}
       
       <View style={[styles.inputContainer, error && styles.inputError]}>
-        <CountryPicker
-          selectedCountry={selectedCountry}
-          onSelectCountry={handleCountrySelect}
-          style={styles.countryPicker}
-        />
+        <View style={styles.countryPickerWrapper}>
+          <CountryPicker
+            selectedCountry={selectedCountry}
+            onSelectCountry={handleCountrySelect}
+            style={styles.countryPicker}
+          />
+        </View>
         
         <TextInput
           style={styles.textInput}
@@ -115,34 +117,42 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: 8,
-    backgroundColor: Colors.card,
+    borderRadius: 12,
+    backgroundColor: Colors.white,
+    minHeight: 48,
     overflow: 'hidden',
   },
   inputError: {
     borderColor: Colors.error,
   },
-  countryPicker: {
-    borderWidth: 0,
+  countryPickerWrapper: {
+    backgroundColor: Colors.background,
     borderRightWidth: 1,
     borderRightColor: Colors.border,
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  countryPicker: {
+    borderWidth: 0,
     borderRadius: 0,
-    backgroundColor: Colors.cardSecondary,
+    backgroundColor: 'transparent',
+    minHeight: 46,
+    justifyContent: 'center',
   },
   textInput: {
     flex: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
     color: Colors.text,
-    backgroundColor: Colors.card,
+    backgroundColor: Colors.white,
   },
   errorText: {
     marginTop: 4,
-    fontSize: 14,
+    fontSize: 12,
     color: Colors.error,
   },
   helpText: {

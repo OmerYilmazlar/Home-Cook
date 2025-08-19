@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, RefreshControl, Platform, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, RefreshControl, Platform, Dimensions, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { MapPin, TrendingUp, DollarSign, Clock, Plus, Sparkles, Star } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -73,6 +73,30 @@ export default function HomeScreen() {
   
   const handleAddMeal = () => {
     router.push('/add-meal');
+  };
+
+  const handleEditMeal = (mealId: string) => {
+    router.push(`/edit-meal/${mealId}`);
+  };
+
+  const { deleteMeal } = useMealsStore.getState();
+  const handleDeleteMeal = (mealId: string, name: string) => {
+    Alert.alert(
+      'Delete Meal',
+      `Are you sure you want to delete "${name}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: async () => {
+            try {
+              await deleteMeal(mealId);
+              await onRefresh();
+            } catch (e) {
+              Alert.alert('Error', 'Failed to delete meal');
+            }
+          }
+        }
+      ]
+    );
   };
   
   // Calculate cook stats
@@ -309,7 +333,28 @@ export default function HomeScreen() {
         {featuredMeals.length > 0 ? (
           <View style={styles.mealsContainer}>
             {featuredMeals.map(meal => (
-              <MealCard key={meal.id} meal={meal} />
+              <View key={meal.id}>
+                <MealCard meal={meal} />
+                {isCook && user?.id === meal.cookId && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingHorizontal: 4 }}>
+                    <Button
+                      title="Edit"
+                      variant="outline"
+                      size="small"
+                      onPress={() => handleEditMeal(meal.id)}
+                      testID={`home-edit-${meal.id}`}
+                    />
+                    <Button
+                      title="Delete"
+                      variant="outline"
+                      size="small"
+                      onPress={() => handleDeleteMeal(meal.id, meal.name)}
+                      style={{ borderColor: Colors.error }}
+                      testID={`home-delete-${meal.id}`}
+                    />
+                  </View>
+                )}
+              </View>
             ))}
           </View>
         ) : (

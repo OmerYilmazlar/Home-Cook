@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { StyleSheet, View, Text, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -16,6 +16,21 @@ interface MealCardProps {
 export default function MealCard({ meal, compact = false, onPress, showCookInfo = true }: MealCardProps) {
   const router = useRouter();
   
+  const fallbackUri = 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=800&h=600&fit=crop&auto=format';
+  const initialUri = useMemo(() => {
+    const first = (meal.images && meal.images.length > 0) ? meal.images[0] : undefined;
+    const isHttp = typeof first === 'string' && /^https?:\/\//.test(first);
+    const sanitized = isHttp ? first as string : fallbackUri;
+    return sanitized;
+  }, [meal.images]);
+
+  const [imageUri, setImageUri] = useState<string>(initialUri);
+
+  const handleImageError = useCallback((e: any) => {
+    console.warn('MealCard: image load error for meal', meal.id, 'uri:', imageUri, e?.nativeEvent ?? {});
+    setImageUri(fallbackUri);
+  }, [meal.id, imageUri]);
+
   const handlePress = () => {
     if (onPress) {
       onPress();
@@ -29,13 +44,16 @@ export default function MealCard({ meal, compact = false, onPress, showCookInfo 
       style={[styles.container, compact && styles.compactContainer]} 
       onPress={handlePress}
     >
-      <View style={styles.imageContainer}>
+      <View style={styles.imageContainer} testID="meal-card-image-container">
         <Image
-          source={{ uri: meal.images && meal.images.length > 0 ? meal.images[0] : 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop' }}
+          source={{ uri: imageUri }}
           style={[styles.image, compact && styles.compactImage]}
           contentFit="cover"
           transition={200}
-          placeholder="https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop"
+          placeholder={fallbackUri}
+          onError={handleImageError}
+          accessibilityLabel={`Image of ${meal.name}`}
+          testID="meal-card-image"
         />
         {meal.availableQuantity === 0 && (
           <View style={styles.soldOutOverlay}>

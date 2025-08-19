@@ -20,6 +20,8 @@ interface AuthState {
   updateUserRating: (userId: string, newRating: number) => Promise<void>;
   updateCustomerReviewCount: (customerId: string) => Promise<void>;
   initialize: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -353,6 +355,60 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           });
         } catch (error) {
           console.error('Failed to update customer review count:', error);
+        }
+      },
+
+      resetPassword: async (email: string) => {
+        try {
+          set({ isLoading: true, error: null });
+          
+          console.log('🔐 Auth Store: Password reset request for:', email);
+          
+          const { error } = await supabase.auth.resetPasswordForEmail(email);
+          
+          if (error) {
+            console.log('❌ Auth Store: Password reset failed:', error.message);
+            set({ isLoading: false, error: error.message });
+            throw new Error(error.message);
+          }
+          
+          console.log('✅ Auth Store: Password reset email sent successfully');
+          set({ isLoading: false });
+        } catch (error) {
+          console.error('❌ Auth Store: Password reset error:', error);
+          set({ 
+            isLoading: false, 
+            error: error instanceof Error ? error.message : 'Password reset failed' 
+          });
+          throw error;
+        }
+      },
+      
+      updatePassword: async (password: string) => {
+        try {
+          set({ isLoading: true, error: null });
+          
+          console.log('🔐 Auth Store: Updating password...');
+          
+          const { error } = await supabase.auth.updateUser({
+            password: password
+          });
+          
+          if (error) {
+            console.log('❌ Auth Store: Password update failed:', error.message);
+            set({ isLoading: false, error: error.message });
+            throw new Error(error.message);
+          }
+          
+          console.log('✅ Auth Store: Password updated successfully');
+          set({ isLoading: false });
+        } catch (error) {
+          console.error('❌ Auth Store: Password update error:', error);
+          set({ 
+            isLoading: false, 
+            error: error instanceof Error ? error.message : 'Password update failed' 
+          });
+          throw error;
         }
       },
 

@@ -109,6 +109,10 @@ export default function LoginScreen() {
     router.push('/signup');
   };
   
+  const handleForgotPassword = () => {
+    router.push('/(auth)/forgot-password');
+  };
+  
   return (
     <KeyboardAvoidingView 
       style={styles.container} 
@@ -161,6 +165,13 @@ export default function LoginScreen() {
           style={styles.button}
           fullWidth
         />
+        
+        <TouchableOpacity 
+          onPress={handleForgotPassword}
+          style={styles.forgotPasswordContainer}
+        >
+          <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+        </TouchableOpacity>
       </View>
       
       <View style={styles.footer}>
@@ -249,5 +260,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.primary,
+  },
+  forgotPasswordContainer: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    color: Colors.primary,
+    textDecorationLine: 'underline',
   },
 });

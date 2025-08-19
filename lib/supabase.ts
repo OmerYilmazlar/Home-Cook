@@ -1,10 +1,24 @@
 import { createClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 
 const supabaseUrl = 'https://encrdntkazmlqwjqaiur.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVuY3JkbnRrYXptbHF3anFhaXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwNjg5NzUsImV4cCI6MjA2OTY0NDk3NX0.-sKU90ZM9sVfl7S0dPrc3Vwld2i4q4y6nzHy8Afc-14';
 
-// For development/demo purposes, we'll use the anon key with RLS disabled temporarily
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Configure auth settings
+const authConfig = {
+  auth: {
+    // Configure redirect URL for password reset
+    redirectTo: Platform.select({
+      web: `${window?.location?.origin}/reset-password-confirm`,
+      default: 'homecook://reset-password-confirm'
+    }),
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+};
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, authConfig);
 
 // Admin client for data seeding (in production, use service role key)
 export const supabaseAdmin = createClient(supabaseUrl, supabaseAnonKey, {

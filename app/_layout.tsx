@@ -13,8 +13,9 @@ import { useLocationStore } from "@/store/location-store";
 import { useAuthStore } from "@/store/auth-store";
 import NotificationBanner from "@/components/NotificationBanner";
 import LocationPermissionModal from "@/components/LocationPermissionModal";
-import { Platform } from "react-native";
+import { Platform, Linking } from "react-native";
 import { initializeEmailJS } from "@/lib/verification";
+import { supabase } from "@/lib/supabase";
 
 export const unstable_settings = {
   initialRouteName: "(auth)",
@@ -109,6 +110,54 @@ function ThemedStack() {
       initializeEmailJS();
     }
   }, [isLoaded, initializeNotifications]);
+  
+  // Handle deep links for password reset
+  useEffect(() => {
+    const handleDeepLink = (url: string) => {
+      console.log('Deep link received:', url);
+      
+      // Handle password reset deep links
+      if (url.includes('reset-password-confirm') || url.includes('type=recovery')) {
+        // Extract URL parameters
+        const urlObj = new URL(url.replace('homecook://', 'https://temp.com/'));
+        const params = new URLSearchParams(urlObj.search || urlObj.hash.substring(1));
+        
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        const type = params.get('type');
+        
+        if (type === 'recovery' && accessToken && refreshToken) {
+          console.log('Password reset tokens found, setting session...');
+          supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          }).then(({ error }) => {
+            if (error) {
+              console.error('Error setting session from deep link:', error);
+            } else {
+              console.log('Session set successfully from deep link');
+            }
+          });
+        }
+      }
+    };
+    
+    // Handle initial URL (when app is opened from a link)
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink(url);
+      }
+    });
+    
+    // Handle URLs when app is already running
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      handleDeepLink(url);
+    });
+    
+    return () => {
+      subscription?.remove();
+    };
+  }, []);
   
   // Initialize location monitoring when user is authenticated
   useEffect(() => {

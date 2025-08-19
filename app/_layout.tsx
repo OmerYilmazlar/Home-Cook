@@ -119,7 +119,7 @@ function ThemedStack() {
       // Handle password reset deep links
       if (url.includes('reset-password-confirm') || url.includes('type=recovery')) {
         // Extract URL parameters
-        const urlObj = new URL(url.replace('homecook://', 'https://temp.com/'));
+        const urlObj = new URL(url.replace(/^(homecook|myapp):\/\//, 'https://temp.com/'));
         const params = new URLSearchParams(urlObj.search || urlObj.hash.substring(1));
         
         const accessToken = params.get('access_token');

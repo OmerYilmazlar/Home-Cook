@@ -365,7 +365,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           console.log('🔐 Auth Store: Password reset request for:', email);
           
           const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: 'homecook://reset-password-confirm'
+            redirectTo: 'myapp://reset-password-confirm'
           });
           
           if (error) {

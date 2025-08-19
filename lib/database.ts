@@ -643,6 +643,45 @@ export const mealService = {
   }
 };
 
+// Reservation mappers
+function convertDbReservationToAppReservation(db: any): Reservation {
+  return {
+    id: db.id,
+    mealId: db.meal_id,
+    customerId: db.customer_id,
+    cookId: db.cook_id,
+    status: db.status,
+    quantity: db.quantity,
+    totalPrice: db.total_price,
+    totalAmount: db.total_amount ?? db.total_price,
+    pickupTime: db.pickup_time,
+    createdAt: db.created_at,
+    paymentConfirmed: db.payment_confirmed ?? undefined,
+    paymentId: db.payment_id ?? undefined,
+    paymentStatus: db.payment_status ?? undefined,
+    rating: db.rating ?? undefined,
+  } as Reservation;
+}
+
+function convertAppReservationToDbReservation(r: Partial<Reservation>) {
+  const out: any = {};
+  if (r.id !== undefined) out.id = r.id;
+  if (r.mealId !== undefined) out.meal_id = r.mealId;
+  if (r.customerId !== undefined) out.customer_id = r.customerId;
+  if (r.cookId !== undefined) out.cook_id = r.cookId;
+  if (r.status !== undefined) out.status = r.status;
+  if (r.quantity !== undefined) out.quantity = r.quantity;
+  if (r.totalPrice !== undefined) out.total_price = r.totalPrice;
+  if (r.totalAmount !== undefined) out.total_amount = r.totalAmount;
+  if (r.pickupTime !== undefined) out.pickup_time = r.pickupTime;
+  if (r.createdAt !== undefined) out.created_at = r.createdAt;
+  if (r.paymentConfirmed !== undefined) out.payment_confirmed = r.paymentConfirmed;
+  if (r.paymentId !== undefined) out.payment_id = r.paymentId;
+  if (r.paymentStatus !== undefined) out.payment_status = r.paymentStatus;
+  if (r.rating !== undefined) out.rating = r.rating;
+  return out;
+}
+
 // Reservation Service
 export const reservationService = {
   async getReservationsByCustomerId(customerId: string): Promise<Reservation[]> {
@@ -653,7 +692,7 @@ export const reservationService = {
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
-    return data || [];
+    return (data || []).map(convertDbReservationToAppReservation);
   },
 
   async getReservationsByCookId(cookId: string): Promise<Reservation[]> {
@@ -664,32 +703,38 @@ export const reservationService = {
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
-    return data || [];
+    return (data || []).map(convertDbReservationToAppReservation);
   },
 
   async createReservation(reservation: Omit<Reservation, 'id' | 'createdAt'>): Promise<Reservation> {
+    const id = `reservation-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const dbPayload = convertAppReservationToDbReservation({
+      ...reservation,
+      id,
+      createdAt: new Date().toISOString(),
+      totalAmount: reservation.totalAmount ?? reservation.totalPrice,
+    });
+
     const { data, error } = await supabase
       .from('reservations')
-      .insert({
-        ...reservation,
-        created_at: new Date().toISOString()
-      })
+      .insert(dbPayload)
       .select()
       .single();
 
     if (error) throw new Error(error.message);
-    return data;
+    return convertDbReservationToAppReservation(data);
   },
 
   async updateReservation(id: string, updates: Partial<Reservation>): Promise<Reservation> {
+    const dbUpdates = convertAppReservationToDbReservation(updates);
     const { data, error } = await supabase
       .from('reservations')
-      .update(updates)
+      .update(dbUpdates)
       .eq('id', id)
       .select()
       .single();
 
     if (error) throw new Error(error.message);
-    return data;
+    return convertDbReservationToAppReservation(data);
   }
 };

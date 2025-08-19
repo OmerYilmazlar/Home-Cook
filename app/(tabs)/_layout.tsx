@@ -125,6 +125,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Search size={24} color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="explore-map"
+        options={{
+          title: 'Map',
+          tabBarIcon: ({ color }) => <Search size={24} color={color} />,
+        }}
+      />
       
       <Tabs.Screen
         name="messages"

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { StyleSheet, View, Text, Pressable, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -40,6 +40,38 @@ export default function MealCard({ meal, compact = false, onPress, showCookInfo 
       router.push(`/meal/${meal.id}`);
     }
   };
+  // Validate local file existence; if missing, fall back to placeholder
+  useEffect(() => {
+    const first = (meal.images && meal.images.length > 0) ? meal.images[0] : undefined;
+    const isLocalFile = typeof first === 'string' && /^file:\/\//.test(first);
+    const isContentUri = typeof first === 'string' && /^content:\/\//.test(first);
+
+    if (Platform.OS !== 'web' && (isLocalFile || isContentUri)) {
+      // Dynamically import to avoid web issues
+      import('expo-file-system')
+        .then(async (FileSystem) => {
+          try {
+            if (isContentUri) {
+              // content:// URIs are often transient; use fallback immediately
+              console.log('MealCard: content URI detected, using fallback for meal', meal.id);
+              setImageUri(fallbackUri);
+              return;
+            }
+            const info = await FileSystem.getInfoAsync(first as string);
+            if (!info.exists) {
+              console.log('MealCard: local image missing for meal', meal.id, '-> using fallback');
+              setImageUri(fallbackUri);
+            }
+          } catch (err) {
+            console.log('MealCard: error checking file existence', err);
+            setImageUri(fallbackUri);
+          }
+        })
+        .catch(() => {
+          setImageUri(fallbackUri);
+        });
+    }
+  }, [meal.id, meal.images, initialUri]);
   
   return (
     <Pressable 

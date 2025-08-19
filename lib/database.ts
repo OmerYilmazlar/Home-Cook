@@ -447,6 +447,45 @@ export const userService = {
   }
 };
 
+async function toPublicImageUrls(uris: string[]): Promise<string[]> {
+  const results: string[] = [];
+  for (const uri of uris ?? []) {
+    try {
+      const isHttp = typeof uri === 'string' && /^https?:\/\//.test(uri);
+      if (isHttp) {
+        results.push(uri);
+        continue;
+      }
+      const bucket = 'meal-images';
+      const fileExt = (uri.split('.').pop() || 'jpg').split('?')[0];
+      const fileName = `meal_${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
+
+      const response = await fetch(uri as string);
+      const blob = await response.blob();
+
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(fileName, blob, { contentType: blob.type || `image/${fileExt}`, upsert: true });
+      if (uploadError) {
+        console.warn('Storage upload failed, keeping original uri', uploadError);
+        results.push(uri);
+        continue;
+      }
+      const { data } = supabase.storage.from(bucket).getPublicUrl(fileName);
+      const publicUrl = data?.publicUrl;
+      if (publicUrl) {
+        results.push(publicUrl);
+      } else {
+        results.push(uri);
+      }
+    } catch (e) {
+      console.warn('Image upload error, falling back to original uri', e);
+      results.push(uri);
+    }
+  }
+  return results;
+}
+
 // Meal Service
 export const mealService = {
   async getAllMeals(): Promise<Meal[]> {
@@ -487,8 +526,11 @@ export const mealService = {
   async createMeal(meal: Omit<Meal, 'id' | 'createdAt'>): Promise<Meal> {
     console.log('💾 Database: Creating meal with data:', meal);
     
+    const safeImages = await toPublicImageUrls(meal.images ?? []);
+
     const dbMeal = convertAppMealToDbMeal({
       ...meal,
+      images: safeImages,
       id: `meal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       createdAt: new Date().toISOString()
     });
@@ -511,7 +553,11 @@ export const mealService = {
   },
 
   async updateMeal(id: string, updates: Partial<Meal>): Promise<Meal> {
-    const dbUpdates = convertAppMealToDbMeal(updates);
+    const processed: Partial<Meal> = { ...updates };
+    if (updates.images && updates.images.length > 0) {
+      processed.images = await toPublicImageUrls(updates.images);
+    }
+    const dbUpdates = convertAppMealToDbMeal(processed);
     
     const { data, error } = await supabase
       .from('meals')

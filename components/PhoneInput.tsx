@@ -37,7 +37,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
         onCountryChange?.(detectedCountry);
       }
     }
-  }, [value]);
+  }, [value, selectedCountry.code, onCountryChange]);
 
   const handleCountrySelect = (country: Country) => {
     setSelectedCountry(country);
@@ -95,12 +95,6 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       </View>
       
       {error && <Text style={styles.errorText}>{error}</Text>}
-      
-      {selectedCountry && value && (
-        <Text style={styles.helpText}>
-          Format example: {selectedCountry.dialCode} {selectedCountry.format?.replace(/#/g, '0') || '123 456 7890'}
-        </Text>
-      )}
     </View>
   );
 };
@@ -155,10 +149,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.error,
   },
-  helpText: {
-    marginTop: 4,
-    fontSize: 12,
-    color: Colors.subtext,
-    fontStyle: 'italic',
-  },
+
 });

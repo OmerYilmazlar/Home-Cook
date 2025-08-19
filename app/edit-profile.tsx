@@ -3,17 +3,15 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform, 
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, MapPin, CheckCircle, XCircle } from 'lucide-react-native';
+import { Camera, MapPin } from 'lucide-react-native';
 import { useAuthStore } from '@/store/auth-store';
 import Colors from '@/constants/colors';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
 import { PhoneInput } from '@/components/PhoneInput';
 
-import { validatePhoneNumber, formatPhoneNumber, validateAddress, getAddressSuggestions, validateBio, validateAddressWithGoogle, getCitySuggestions, getZipCodeSuggestions, getAddressSuggestionsInZip } from '@/utils/validation';
-import { validateAddressAPI, validatePostalCode } from '@/utils/addressValidation';
-import { Country } from '@/constants/countries';
-import { CountryPicker } from '@/components/CountryPicker';
+import { validateBio } from '@/utils/validation';
+
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -27,53 +25,15 @@ export default function EditProfileScreen() {
   const [bio, setBio] = useState(user?.bio || '');
   const [avatar, setAvatar] = useState(user?.avatar || '');
 
-  // Address validation state - step by step approach
-  const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
-  const [city, setCity] = useState('');
-  const [zipCode, setZipCode] = useState('');
-  const [streetAddress, setStreetAddress] = useState('');
+  // Simple address state - no validation
+  const [address, setAddress] = useState(user?.location?.address || '');
   
-  // Autocomplete suggestions
-  const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
-  const [zipSuggestions, setZipSuggestions] = useState<string[]>([]);
-  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
-  
-  // Show/hide suggestion dropdowns
-  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
-  const [showZipSuggestions, setShowZipSuggestions] = useState(false);
-  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
-  
-  // Address validation states
-  const [isAddressValidated, setIsAddressValidated] = useState(false);
-  const [addressValidationResult, setAddressValidationResult] = useState<any>(null);
-  
-  // Initialize address fields from user data
-  useEffect(() => {
-    if (user?.location?.address) {
-      // Try to parse existing address into components
-      const addressParts = user.location.address.split(',').map(part => part.trim());
-      if (addressParts.length >= 2) {
-        setStreetAddress(addressParts[0] || '');
-        setCity(addressParts[1] || '');
-        if (addressParts.length >= 3) {
-          setZipCode(addressParts[2] || '');
-        }
-        // Try to detect country from address
-        const lastPart = addressParts[addressParts.length - 1];
-        if (lastPart.includes('UK') || lastPart.includes('United Kingdom')) {
-          // Set UK as default if detected
-          setSelectedCountry({ code: 'GB', name: 'United Kingdom', flag: '🇬🇧', dialCode: '+44' });
-        }
-      } else {
-        setStreetAddress(user.location.address);
-      }
-    }
-  }, [user?.location?.address]);
+
   
 
   
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [addressValidating, setAddressValidating] = useState(false);
+
   // Removed phoneValid state - phone is now optional without validation
   
   // Auto-clear errors after 5 seconds
@@ -117,169 +77,11 @@ export default function EditProfileScreen() {
     }, [])
   );
   
-  // Enhanced UK postcode suggestions
-  const enhanceUKPostcodeSuggestions = (suggestions: string[], query: string): string[] => {
-    const queryUpper = query.toUpperCase().replace(/\s/g, '');
-    const enhanced = [...suggestions];
-    
-    // Add common UK postcode patterns based on the query
-    if (queryUpper.length >= 2) {
-      const areaCode = queryUpper.substring(0, 2);
-      const district = queryUpper.length > 2 ? queryUpper.substring(2, 4) : '1';
-      
-      // Generate realistic UK postcodes including the user's example
-      const commonSectors = ['1AA', '2BB', '3CC', '4HW', '5DD', '6EE', '7FF', '8GG', '9HH'];
-      
-      commonSectors.forEach(sector => {
-        const postcode = `${areaCode}${district} ${sector}`;
-        if (!enhanced.includes(postcode) && postcode.toLowerCase().includes(query.toLowerCase())) {
-          enhanced.push(postcode);
-        }
-      });
-      
-      // Special handling for EN1 area to include 4HW specifically
-      if (areaCode === 'EN' && (district === '1' || queryUpper.startsWith('EN1'))) {
-        const specialPostcode = 'EN1 4HW';
-        if (!enhanced.includes(specialPostcode)) {
-          enhanced.unshift(specialPostcode); // Add to beginning for priority
-        }
-      }
-    }
-    
-    // Remove duplicates and sort by relevance
-    const unique = [...new Set(enhanced)];
-    return unique.slice(0, 8); // Limit to 8 suggestions
-  };
-  // Get city suggestions based on selected country
-  const handleCitySearch = async (query: string) => {
-    if (!selectedCountry || query.length < 2) {
-      setCitySuggestions([]);
-      setShowCitySuggestions(false);
-      return;
-    }
-    
-    try {
-      const suggestions = await getCitySuggestions(query, selectedCountry.code);
-      setCitySuggestions(suggestions);
-      setShowCitySuggestions(suggestions.length > 0);
-    } catch (error) {
-      console.warn('Failed to get city suggestions:', error);
-      setCitySuggestions([]);
-      setShowCitySuggestions(false);
-    }
-  };
-  
-  // Get ZIP code suggestions based on selected city
-  const handleZipSearch = async (query: string) => {
-    if (!selectedCountry || !city || query.length < 2) {
-      setZipSuggestions([]);
-      setShowZipSuggestions(false);
-      return;
-    }
-    
-    try {
-      const suggestions = await getZipCodeSuggestions(query, city, selectedCountry.code);
-      // Filter and enhance suggestions for better UK postcode support
-      const enhancedSuggestions = selectedCountry.code === 'GB' 
-        ? enhanceUKPostcodeSuggestions(suggestions, query)
-        : suggestions;
-      setZipSuggestions(enhancedSuggestions);
-      setShowZipSuggestions(enhancedSuggestions.length > 0);
-    } catch (error) {
-      console.warn('Failed to get ZIP suggestions:', error);
-      setZipSuggestions([]);
-      setShowZipSuggestions(false);
-    }
-  };
-  
-  // Get address suggestions based on ZIP code
-  const handleAddressSearch = async (query: string) => {
-    if (!selectedCountry || !city || !zipCode || query.length < 2) {
-      setAddressSuggestions([]);
-      setShowAddressSuggestions(false);
-      return;
-    }
-    
-    try {
-      const suggestions = await getAddressSuggestionsInZip(query, zipCode, city, selectedCountry.code);
-      setAddressSuggestions(suggestions);
-      setShowAddressSuggestions(suggestions.length > 0);
-    } catch (error) {
-      console.warn('Failed to get address suggestions:', error);
-      setAddressSuggestions([]);
-      setShowAddressSuggestions(false);
-    }
-  };
-  
-  // Validate the complete address
-  const validateCompleteAddress = async () => {
-    if (!selectedCountry || !city || !zipCode || !streetAddress) {
-      setErrors(prev => ({ ...prev, address: 'Please complete all address fields first' }));
-      return false;
-    }
-    
-    const fullAddress = `${streetAddress}, ${city}, ${zipCode}, ${selectedCountry.name}`;
-    
-    try {
-      setAddressValidating(true);
-      const validation = await validateAddressWithGoogle(fullAddress);
-      
-      if (validation.isValid) {
-        setIsAddressValidated(true);
-        setAddressValidationResult(validation);
-        setErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors.address;
-          return newErrors;
-        });
-        return true;
-      } else {
-        setIsAddressValidated(false);
-        setAddressValidationResult(null);
-        setErrors(prev => ({ ...prev, address: validation.error || 'Address validation failed' }));
-        return false;
-      }
-    } catch (error) {
-      console.warn('Address validation failed:', error);
-      setIsAddressValidated(false);
-      setAddressValidationResult(null);
-      setErrors(prev => ({ ...prev, address: 'Failed to validate address. Please try again.' }));
-      return false;
-    } finally {
-      setAddressValidating(false);
-    }
-  };
-  
-  // Get full address string
-  const getFullAddress = () => {
-    const parts = [streetAddress, city, zipCode];
-    if (selectedCountry) {
-      parts.push(selectedCountry.name);
-    }
-    return parts.filter(part => part.trim()).join(', ');
-  };
-  
-  // Reset validation when address components change
-  useEffect(() => {
-    setIsAddressValidated(false);
-    setAddressValidationResult(null);
-    setErrors(prev => {
-      const newErrors = { ...prev };
-      delete newErrors.address;
-      return newErrors;
-    });
-  }, [selectedCountry, city, zipCode, streetAddress]);
+
   
 
   
-  // Phone handling simplified - no validation required since it's optional
-  const handlePhoneChange = (text: string) => {
-    // Clear error when user starts typing
-    clearFieldError('phone');
-    
-    // Just set the phone directly without validation
-    setPhone(text);
-  };
+
   
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -294,19 +96,7 @@ export default function EditProfileScreen() {
     // Phone is now optional - no validation required
     
     if (isCook) {
-      if (!selectedCountry) newErrors.country = 'Please select your country';
-      if (!city) newErrors.city = 'City is required';
-      if (!zipCode) newErrors.zipCode = 'ZIP/Postal code is required';
-      if (!streetAddress) newErrors.streetAddress = 'Street address is required';
-      
-      // Check if address validation is required and completed
-      if (selectedCountry && city && zipCode && streetAddress) {
-        if (addressValidating) {
-          newErrors.address = 'Please wait for address validation to complete';
-        } else if (!isAddressValidated) {
-          newErrors.address = 'Please validate your address before saving';
-        }
-      }
+      if (!address) newErrors.address = 'Address is required for cooks';
     }
     
     // Enhanced bio validation with word limit
@@ -347,8 +137,7 @@ export default function EditProfileScreen() {
   const handleSubmit = async () => {
     console.log('🔍 Edit Profile: Starting form submission...');
     console.log('🔍 Edit Profile: Current form data:', { 
-      name, email, phone, bio, avatar,
-      streetAddress, city, zipCode 
+      name, email, phone, bio, avatar, address 
     });
     
     if (!validateForm()) {
@@ -367,11 +156,10 @@ export default function EditProfileScreen() {
       
       // Only include address for cooks
       if (isCook) {
-        const fullAddress = getFullAddress();
-        console.log('🏠 Edit Profile: Full address for cook:', fullAddress);
+        console.log('🏠 Edit Profile: Address for cook:', address);
         profileData.location = {
           ...user?.location,
-          address: fullAddress,
+          address: address,
         };
       }
       
@@ -508,219 +296,25 @@ export default function EditProfileScreen() {
           onChangeText={(text) => {
             clearFieldError('phone');
             setPhone(text);
-            // Remove validation since phone is optional
           }}
-          onCountryChange={setSelectedCountry}
           error={errors.phone}
           placeholder="Enter your phone number (optional)"
         />
-        {/* Removed phone validation feedback since it's optional */}
         
         {isCook && (
-          <View style={styles.addressSection}>
-            <Text style={styles.sectionTitle}>Address Information</Text>
-            <Text style={styles.sectionSubtitle}>Complete each step to validate your pickup location</Text>
-            
-            {/* Step 1: Country Selection */}
-            <View style={styles.stepContainer}>
-              <Text style={styles.stepTitle}>Step 1: Select Country</Text>
-              <CountryPicker
-                selectedCountry={selectedCountry}
-                onSelectCountry={(country) => {
-                  clearFieldError('country');
-                  setSelectedCountry(country);
-                  // Reset subsequent fields when country changes
-                  setCity('');
-                  setZipCode('');
-                  setStreetAddress('');
-                  setCitySuggestions([]);
-                  setZipSuggestions([]);
-                  setAddressSuggestions([]);
-                }}
-                error={errors.country}
-              />
-            </View>
-            
-            {/* Step 2: City Selection */}
-            {selectedCountry && (
-              <View style={styles.stepContainer}>
-                <Text style={styles.stepTitle}>Step 2: Enter City</Text>
-                <View>
-                  <Input
-                    label="City"
-                    placeholder={`Enter city in ${selectedCountry.name}`}
-                    value={city}
-                    onChangeText={(text) => {
-                      clearFieldError('city');
-                      setCity(text);
-                      handleCitySearch(text);
-                      // Reset subsequent fields when city changes
-                      setZipCode('');
-                      setStreetAddress('');
-                      setZipSuggestions([]);
-                      setAddressSuggestions([]);
-                    }}
-                    error={errors.city}
-                  />
-                  
-                  {/* City suggestions dropdown */}
-                  {showCitySuggestions && citySuggestions.length > 0 && (
-                    <View style={styles.suggestionsContainer}>
-                      {citySuggestions.map((suggestion, index) => (
-                        <TouchableOpacity
-                          key={index}
-                          style={styles.suggestionItem}
-                          onPress={() => {
-                            setCity(suggestion);
-                            setShowCitySuggestions(false);
-                            setCitySuggestions([]);
-                          }}
-                        >
-                          <MapPin size={16} color={Colors.subtext} />
-                          <Text style={styles.suggestionText}>{suggestion}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </View>
-              </View>
-            )}
-            
-            {/* Step 3: ZIP Code Selection */}
-            {selectedCountry && city && (
-              <View style={styles.stepContainer}>
-                <Text style={styles.stepTitle}>Step 3: Enter ZIP/Postal Code</Text>
-                <View>
-                  <Input
-                    label="ZIP/Postal Code"
-                    placeholder={selectedCountry.code === 'US' ? 'e.g. 12345' : selectedCountry.code === 'GB' ? 'e.g. SW1A 1AA' : 'Enter postal code'}
-                    value={zipCode}
-                    onChangeText={(text) => {
-                      clearFieldError('zipCode');
-                      setZipCode(text);
-                      handleZipSearch(text);
-                      // Reset subsequent fields when ZIP changes
-                      setStreetAddress('');
-                      setAddressSuggestions([]);
-                    }}
-                    error={errors.zipCode}
-                    autoCapitalize="characters"
-                  />
-                  
-                  {/* ZIP suggestions dropdown */}
-                  {showZipSuggestions && zipSuggestions.length > 0 && (
-                    <View style={styles.suggestionsContainer}>
-                      {zipSuggestions.map((suggestion, index) => (
-                        <TouchableOpacity
-                          key={index}
-                          style={styles.suggestionItem}
-                          onPress={() => {
-                            setZipCode(suggestion);
-                            setShowZipSuggestions(false);
-                            setZipSuggestions([]);
-                          }}
-                        >
-                          <MapPin size={16} color={Colors.subtext} />
-                          <Text style={styles.suggestionText}>{suggestion}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </View>
-              </View>
-            )}
-            
-            {/* Step 4: Street Address Selection */}
-            {selectedCountry && city && zipCode && (
-              <View style={styles.stepContainer}>
-                <Text style={styles.stepTitle}>Step 4: Enter Street Address</Text>
-                <View>
-                  <Input
-                    label="Street Address"
-                    placeholder={`Enter address in ${city}, ${zipCode}`}
-                    value={streetAddress}
-                    onChangeText={(text) => {
-                      clearFieldError('streetAddress');
-                      clearFieldError('address');
-                      setStreetAddress(text);
-                      handleAddressSearch(text);
-                    }}
-                    leftIcon={<MapPin size={20} color={Colors.subtext} />}
-                    error={errors.streetAddress}
-                  />
-                  
-                  {/* Address suggestions dropdown */}
-                  {showAddressSuggestions && addressSuggestions.length > 0 && (
-                    <View style={styles.suggestionsContainer}>
-                      {addressSuggestions.map((suggestion, index) => (
-                        <TouchableOpacity
-                          key={index}
-                          style={styles.suggestionItem}
-                          onPress={() => {
-                            setStreetAddress(suggestion);
-                            setShowAddressSuggestions(false);
-                            setAddressSuggestions([]);
-                          }}
-                        >
-                          <MapPin size={16} color={Colors.subtext} />
-                          <Text style={styles.suggestionText}>{suggestion}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </View>
-              </View>
-            )}
-            
-            {/* Step 5: Address Validation */}
-            {selectedCountry && city && zipCode && streetAddress && (
-              <View style={styles.stepContainer}>
-                <Text style={styles.stepTitle}>Step 5: Validate Address</Text>
-                <Text style={styles.stepSubtitle}>Verify that your address exists and is correct</Text>
-                
-                <View style={styles.addressPreview}>
-                  <Text style={styles.addressPreviewText}>{getFullAddress()}</Text>
-                </View>
-                
-                <Button
-                  title={addressValidating ? "Validating..." : "Validate Address"}
-                  onPress={validateCompleteAddress}
-                  loading={addressValidating}
-                  disabled={addressValidating || isAddressValidated}
-                  style={[
-                    styles.validateButton,
-                    isAddressValidated && styles.validateButtonSuccess
-                  ]}
-                  fullWidth
-                />
-                
-                {addressValidating && (
-                  <Text style={styles.validationPending}>
-                    🔍 Validating address with Google Places...
-                  </Text>
-                )}
-                
-                {isAddressValidated && addressValidationResult && (
-                  <View style={styles.validationSuccessContainer}>
-                    <Text style={styles.validationSuccess}>
-                      ✅ Address validated successfully!
-                    </Text>
-                    {addressValidationResult.suggestion && (
-                      <Text style={styles.validatedAddressText}>
-                        Verified: {addressValidationResult.suggestion}
-                      </Text>
-                    )}
-                  </View>
-                )}
-                
-                {errors.address && (
-                  <Text style={styles.errorText}>
-                    {errors.address}
-                  </Text>
-                )}
-              </View>
-            )}
-          </View>
+          <Input
+            label="Address"
+            placeholder="Enter your full address"
+            value={address}
+            onChangeText={(text) => {
+              clearFieldError('address');
+              setAddress(text);
+            }}
+            leftIcon={<MapPin size={20} color={Colors.subtext} />}
+            error={errors.address}
+            multiline
+            numberOfLines={2}
+          />
         )}
         
         <View style={styles.bioInputContainer}>
@@ -753,16 +347,11 @@ export default function EditProfileScreen() {
           title="Save Changes"
           onPress={handleSubmit}
           loading={isLoading}
-          disabled={isLoading || Boolean(isCook && selectedCountry && city && zipCode && streetAddress && !isAddressValidated)}
+          disabled={isLoading}
           style={styles.submitButton}
           fullWidth
         />
-        
-        {isCook && !isAddressValidated && selectedCountry && city && zipCode && streetAddress && (
-          <Text style={styles.saveDisabledText}>
-            Please validate your address before saving changes
-          </Text>
-        )}
+
       </View>
     </ScrollView>
     </KeyboardAvoidingView>

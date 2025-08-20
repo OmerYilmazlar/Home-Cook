@@ -4,26 +4,30 @@ import { MapPin, User, ChefHat, UtensilsCrossed, X, Navigation } from 'lucide-re
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
 import Colors from '@/constants/colors';
-import { mockCooks } from '@/mocks/users';
 import { useMealsStore } from '@/store/meals-store';
 import { useLocationStore } from '@/store/location-store';
+import type { Cook, Meal } from '@/types';
 
 interface MapViewProps {
   contentType: 'meals' | 'cooks';
+  meals?: Meal[];
+  cooks?: Cook[];
 }
 
 let MapView: any = null;
 let Marker: any = null;
 let Polyline: any = null;
+let Callout: any = null;
 
 if (Platform.OS !== 'web') {
   const MapModule = require('react-native-maps');
   MapView = MapModule.default;
   Marker = MapModule.Marker;
   Polyline = MapModule.Polyline;
+  Callout = MapModule.Callout;
 }
 
-export default function CustomMapView({ contentType }: MapViewProps) {
+export default function CustomMapView({ contentType, meals, cooks }: MapViewProps) {
   const router = useRouter();
   const { selectedMeal } = useLocalSearchParams();
   const mapRef = useRef<any>(null);
@@ -34,6 +38,8 @@ export default function CustomMapView({ contentType }: MapViewProps) {
   const [travelTime, setTravelTime] = useState<string>('');
   const [availabilityTime, setAvailabilityTime] = useState<string>('');
   const { filteredMeals, fetchMealById } = useMealsStore();
+  const mealsData = meals ?? filteredMeals;
+  const cooksData: Cook[] = cooks ?? [];
 
   // Set initial region when component mounts
   useEffect(() => {
@@ -53,13 +59,12 @@ export default function CustomMapView({ contentType }: MapViewProps) {
   useEffect(() => {
     if (selectedMeal && typeof selectedMeal === 'string') {
       fetchMealById(selectedMeal);
-      // Find the meal and auto-select it
-      const meal = filteredMeals.find(m => m.id === selectedMeal);
+      const meal = mealsData.find(m => m.id === selectedMeal);
       if (meal) {
         handleMealMarkerPress(meal);
       }
     }
-  }, [selectedMeal, filteredMeals]);
+  }, [selectedMeal, mealsData, fetchMealById]);
 
 
 
@@ -190,7 +195,7 @@ export default function CustomMapView({ contentType }: MapViewProps) {
   };
 
   const handleMealMarkerPress = (meal: any) => {
-    const cook = mockCooks.find(c => c.id === meal.cookId);
+    const cook = cooksData.find(c => c.id === meal.cookId);
     if (cook?.location?.latitude && cook?.location?.longitude) {
       calculateRoute(cook.location, meal, 'meal');
     }
@@ -255,7 +260,7 @@ export default function CustomMapView({ contentType }: MapViewProps) {
       )}
 
       {/* Cook markers */}
-      {contentType === 'cooks' && mockCooks.map((cook) => {
+      {contentType === 'cooks' && cooksData.map((cook) => {
         if (cook.location?.latitude && cook.location?.longitude) {
           const isSelected = selectedMarker?.id === cook.id && selectedMarker?.type === 'cook';
           return (
@@ -279,8 +284,8 @@ export default function CustomMapView({ contentType }: MapViewProps) {
       })}
 
       {/* Meal markers */}
-      {contentType === 'meals' && filteredMeals.map((meal) => {
-        const cook = mockCooks.find(c => c.id === meal.cookId);
+      {contentType === 'meals' && mealsData.map((meal) => {
+        const cook = cooksData.find(c => c.id === meal.cookId);
         if (cook?.location?.latitude && cook?.location?.longitude) {
           const isSelected = selectedMarker?.id === meal.id && selectedMarker?.type === 'meal';
           return (
@@ -293,10 +298,18 @@ export default function CustomMapView({ contentType }: MapViewProps) {
               title={meal.name}
               description={`${meal.cuisineType} • £${meal.price} • by ${cook.name}`}
               onPress={() => handleMealMarkerPress(meal)}
-            >
+>
               <View style={[styles.mealMarker, isSelected && styles.selectedMarker]}>
                 <UtensilsCrossed size={16} color="white" />
               </View>
+              {Callout && (
+                <Callout onPress={() => router.push(`/meal/${meal.id}`)} tooltip={false}>
+                  <View style={styles.calloutBox}>
+                    <Text style={styles.calloutTitle}>{meal.name}</Text>
+                    <Text style={styles.calloutSubtitle}>£{meal.price}</Text>
+                  </View>
+                </Callout>
+              )}
             </Marker>
           );
         }
@@ -498,6 +511,24 @@ const styles = StyleSheet.create({
   availabilityText: {
     fontSize: 12,
     color: Colors.primary,
+    fontWeight: '600',
+  },
+  calloutBox: {
+    minWidth: 160,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'white',
+    borderRadius: 8,
+  },
+  calloutTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  calloutSubtitle: {
+    marginTop: 2,
+    fontSize: 13,
+    color: Colors.subtext,
     fontWeight: '600',
   },
 });

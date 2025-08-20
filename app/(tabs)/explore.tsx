@@ -8,6 +8,9 @@ import Colors from '@/constants/colors';
 import { cuisines } from '@/mocks/cuisines';
 import CustomMapView from '@/components/MapView';
 import { Image } from 'expo-image';
+import CookCard from '@/components/CookCard';
+import type { Cook } from '@/types';
+import { userService } from '@/lib/database';
 
 export default function ExploreScreen() {
   const { colors } = useTheme();
@@ -25,10 +28,29 @@ export default function ExploreScreen() {
   const [mode, setMode] = useState<'meals' | 'cooks'>('meals');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [query, setQuery] = useState<string>('');
+  const [cooks, setCooks] = useState<Cook[]>([]);
+  const [loadingCooks, setLoadingCooks] = useState<boolean>(false);
+  const [cooksError, setCooksError] = useState<string | null>(null);
 
   React.useEffect(() => {
     fetchMeals().catch((e) => console.log('Explore: fetchMeals error', e));
   }, [fetchMeals]);
+
+  React.useEffect(() => {
+    if ((mode === 'cooks' || viewMode === 'map') && cooks.length === 0 && !loadingCooks) {
+      setLoadingCooks(true);
+      userService.getAllCooks()
+        .then((list) => {
+          setCooks(list);
+          setCooksError(null);
+        })
+        .catch((e: any) => {
+          console.log('Explore: getAllCooks error', e);
+          setCooksError('Failed to load cooks');
+        })
+        .finally(() => setLoadingCooks(false));
+    }
+  }, [mode, viewMode, cooks.length, loadingCooks]);
 
   React.useEffect(() => {
     setSearchQuery(query);
@@ -172,12 +194,22 @@ export default function ExploreScreen() {
 
       {viewMode === 'map' ? (
         <View style={{ flex: 1 }}>
-          <CustomMapView contentType={mode === 'meals' ? 'meals' : 'cooks'} />
+          <CustomMapView contentType={mode === 'meals' ? 'meals' : 'cooks'} cooks={cooks} />
         </View>
       ) : mode === 'cooks' ? (
-        <View style={styles.empty} testID="explore-empty-cooks">
-          <Text style={{ color: colors.inactive }}>Cooks directory is not available in this demo.</Text>
-        </View>
+        <FlatList
+          data={cooks}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={[styles.list, cooks.length === 0 && { flex: 1 }]}
+          renderItem={({ item }) => <CookCard cook={item} />}
+          ListEmptyComponent={() => (
+            <View style={styles.empty} testID="explore-empty-cooks">
+              <Text style={{ color: colors.inactive }}>
+                {loadingCooks ? 'Loading cooks...' : cooksError ?? 'No cooks found.'}
+              </Text>
+            </View>
+          )}
+        />
       ) : (
         <FlatList
           data={data}

@@ -5,8 +5,8 @@ import Input from '@/components/Input';
 import { CountryPicker } from '@/components/CountryPicker';
 import { Country, countries } from '@/constants/countries';
 import { getCitySuggestions } from '@/utils/validation';
-import Button from '@/components/Button';
-import { getCurrentPosition, reverseGeocode } from '@/utils/geocode';
+
+
 
 interface AddressFieldsProps {
   country: Country | null;
@@ -132,33 +132,6 @@ export default function AddressFields({ country, city, stateProvince, zipCode, s
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      <View style={styles.detectRow}>
-        <Button
-          title="Detect my location"
-          onPress={async () => {
-            try {
-              const coords = await getCurrentPosition();
-              if (!coords) {
-                console.log('detect location: no coords');
-                return;
-              }
-              const rg = await reverseGeocode(coords.latitude, coords.longitude);
-              if (!rg) return;
-              const nextCity = rg.city ?? '';
-              const nextZip = rg.zip ?? '';
-              const nextStreet = rg.street ?? '';
-              const full = rg.formatted ?? '';
-              const detectedCountry = countries.find(c => c.code === (rg.countryCode || selected?.code)) || selected;
-              setCityQuery(nextCity);
-              setZipQuery(nextZip);
-              const next = { country: detectedCountry ?? null, city: nextCity, stateProvince, zipCode: nextZip, streetAddress: nextStreet, fullAddress: full, lat: coords.latitude, lng: coords.longitude };
-              onChange(next);
-            } catch (e) {
-              console.log('detect location failed', e);
-            }
-          }}
-        />
-      </View>
 
       <View style={styles.preview}>
         <Text style={styles.previewLabel}>Full address</Text>
@@ -204,10 +177,6 @@ const styles = StyleSheet.create({
   suggestionText: {
     fontSize: 14,
     color: Colors.text,
-  },
-  detectRow: {
-    marginTop: 4,
-    marginBottom: 8,
   },
   preview: {
     marginTop: 8,

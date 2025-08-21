@@ -4,7 +4,7 @@ import Colors from '@/constants/colors';
 import Input from '@/components/Input';
 import { CountryPicker } from '@/components/CountryPicker';
 import { Country, countries } from '@/constants/countries';
-import { getCitySuggestions, getZipCodeSuggestions } from '@/utils/validation';
+import { getCitySuggestions } from '@/utils/validation';
 
 interface AddressFieldsProps {
   country: Country | null;
@@ -25,8 +25,6 @@ export default function AddressFields({ country, city, stateProvince, zipCode, s
   const [cityValid, setCityValid] = useState<boolean>(true);
 
   const [zipQuery, setZipQuery] = useState<string>(zipCode ?? '');
-  const [zipSuggestions, setZipSuggestions] = useState<string[]>([]);
-  const [showZipSuggestions, setShowZipSuggestions] = useState<boolean>(false);
 
   const fullAddress = useMemo(() => {
     const parts = [streetAddress?.trim(), cityQuery?.trim(), zipQuery?.trim(), selected?.name].filter(Boolean) as string[];
@@ -89,36 +87,6 @@ export default function AddressFields({ country, city, stateProvince, zipCode, s
     };
   }, [cityQuery, selected?.code]);
 
-  useEffect(() => {
-    const q = zipQuery ?? '';
-    if (!q || q.trim().length < 2 || !cityQuery) {
-      setZipSuggestions([]);
-      setShowZipSuggestions(false);
-      return;
-    }
-    let isCancelled = false;
-    const timer = setTimeout(async () => {
-      try {
-        const cc = selected?.code ?? 'GB';
-        const results = await getZipCodeSuggestions(q.trim(), cityQuery.trim(), cc);
-        if (!isCancelled) {
-          setZipSuggestions(results);
-          setShowZipSuggestions(results.length > 0);
-        }
-      } catch (e) {
-        console.log('ZIP suggestions error', e);
-        if (!isCancelled) {
-          setZipSuggestions([]);
-          setShowZipSuggestions(false);
-        }
-      }
-    }, 250);
-    return () => {
-      isCancelled = true;
-      clearTimeout(timer);
-    };
-  }, [zipQuery, cityQuery, selected?.code]);
-
   const handleSelectCity = (name: string) => {
     setShowCitySuggestions(false);
     setCity(name);
@@ -152,22 +120,6 @@ export default function AddressFields({ country, city, stateProvince, zipCode, s
         <Text style={styles.stepLabel}>ZIP / Postcode</Text>
         <View>
           <Input value={zipQuery} onChangeText={setZip} placeholder="e.g. EN1 4HW" testID="zip-input" autoCapitalize="characters" />
-          {showZipSuggestions && zipSuggestions.length > 0 ? (
-            <View style={styles.suggestionsContainer} testID="zip-suggestions">
-              {zipSuggestions.map((item, idx) => (
-                <TouchableOpacity
-                  key={`${item}-${idx}`}
-                  style={styles.suggestionItem}
-                  onPress={() => {
-                    setShowZipSuggestions(false);
-                    setZip(item);
-                  }}
-                >
-                  <Text style={styles.suggestionText}>{item}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : null}
         </View>
       </View>
 

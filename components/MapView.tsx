@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Platform, Alert, TouchableOpacity } from 'react-native';
 import { MapPin, User, ChefHat, UtensilsCrossed, X, Navigation } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -35,11 +35,13 @@ export default function CustomMapView({ contentType, meals, cooks }: MapViewProp
   const [mapRegion, setMapRegion] = useState<any>(null);
   const [selectedMarker, setSelectedMarker] = useState<any>(null);
   const [routeCoordinates, setRouteCoordinates] = useState<any[]>([]);
+  const [destinationCoords, setDestinationCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [travelTime, setTravelTime] = useState<string>('');
   const [availabilityTime, setAvailabilityTime] = useState<string>('');
   const { filteredMeals, fetchMealById } = useMealsStore();
   const mealsData = meals ?? filteredMeals;
   const cooksData: Cook[] = cooks ?? [];
+  console.log('MapView: data snapshot', { contentType, mealsCount: mealsData?.length ?? 0, cooksCount: cooksData?.length ?? 0 });
 
   // Ensure permission and set initial region
   useEffect(() => {
@@ -103,6 +105,7 @@ export default function CustomMapView({ contentType, meals, cooks }: MapViewProp
           : [];
       });
       const all = [...points, ...(contentType === 'cooks' ? cooksPts : mealsPts)];
+      console.log('MapView: fit candidates', all);
       if (all.length >= 1) {
         if (all.length === 1) {
           const single = all[0];
@@ -159,6 +162,7 @@ if (Platform.OS === 'web') {
     }
 
     setSelectedMarker({ ...markerData, type });
+    setDestinationCoords(destination);
 
     try {
       const origin = `${userLocation.coords.latitude},${userLocation.coords.longitude}`;
@@ -251,16 +255,32 @@ if (Platform.OS === 'web') {
     }
   };
 
-  const handleMealMarkerPress = (meal: any) => {
-    const cook = cooksData.find(c => c.id === meal.cookId);
-    if (cook?.location?.latitude && cook?.location?.longitude) {
-      calculateRoute(cook.location, meal, 'meal');
+  const handleMealMarkerPress = async (meal: any) => {
+    try {
+      let cook = cooksData.find(c => c.id === meal.cookId);
+      if (!cook) {
+        try {
+          const { userService } = await import('@/lib/database');
+          const fetched = await userService.getUserById(meal.cookId);
+          cook = fetched as Cook | null as any;
+        } catch (e) {
+          console.log('MapView: failed to fetch cook by id', e);
+        }
+      }
+      if (cook?.location?.latitude && cook?.location?.longitude) {
+        calculateRoute(cook.location, meal, 'meal');
+      } else {
+        console.log('MapView: cook has no coordinates, cannot place marker');
+      }
+    } catch (e) {
+      console.log('MapView: handleMealMarkerPress error', e);
     }
   };
 
   const clearRoute = () => {
     setSelectedMarker(null);
     setRouteCoordinates([]);
+    setDestinationCoords(null);
     setTravelTime('');
     setAvailabilityTime('');
   };
@@ -374,6 +394,19 @@ if (Platform.OS === 'web') {
         }
         return null;
       })}
+
+      {/* Destination fallback marker */}
+      {destinationCoords && (
+        <Marker
+          coordinate={destinationCoords}
+          title={selectedMarker?.name ?? 'Location'}
+          description={selectedMarker?.type === 'meal' ? `£${selectedMarker?.price ?? ''}` : 'Cook location'}
+        >
+          <View style={[styles.mealMarker, styles.selectedMarker]}>
+            <UtensilsCrossed size={16} color="white" />
+          </View>
+        </Marker>
+      )}
 
       {/* Route polyline */}
       {routeCoordinates.length > 0 && Polyline && (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, Platform, Alert, TouchableOpacity } from 'react-native';
 import { MapPin, User, ChefHat, UtensilsCrossed, X, Navigation } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -41,19 +41,34 @@ export default function CustomMapView({ contentType, meals, cooks }: MapViewProp
   const mealsData = meals ?? filteredMeals;
   const cooksData: Cook[] = cooks ?? [];
 
-  // Set initial region when component mounts
+  // Ensure permission and set initial region
   useEffect(() => {
-    if (!mapRegion) {
-      // Set default region initially
-      const defaultRegion = {
-        latitude: 51.6194,
-        longitude: -0.1270,
-        latitudeDelta: 0.0922,
-        longitudeDelta: 0.0421,
-      };
-      setMapRegion(defaultRegion);
-    }
-  }, [mapRegion]);
+    (async () => {
+      try {
+        await checkLocationPermission();
+        if (userLocation) {
+          const region = {
+            latitude: userLocation.coords.latitude,
+            longitude: userLocation.coords.longitude,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          };
+          setMapRegion((prev: any) => prev ?? region);
+        }
+      } catch (e) {
+        console.log('MapView: permission/initial region error', e);
+      }
+      if (!mapRegion) {
+        const defaultRegion = {
+          latitude: 51.5072,
+          longitude: -0.1276,
+          latitudeDelta: 0.2,
+          longitudeDelta: 0.2,
+        };
+        setMapRegion(defaultRegion);
+      }
+    })();
+  }, [checkLocationPermission, userLocation, mapRegion]);
 
   // Handle selectedMeal from URL params and when cooks load
   useEffect(() => {
@@ -68,7 +83,49 @@ export default function CustomMapView({ contentType, meals, cooks }: MapViewProp
 
 
 
-  if (Platform.OS === 'web') {
+  // Fit map to include user + markers
+  useEffect(() => {
+    if (!mapRef.current) return;
+    try {
+      const points: { latitude: number; longitude: number }[] = [];
+      if (userLocation) {
+        points.push({ latitude: userLocation.coords.latitude, longitude: userLocation.coords.longitude });
+      }
+      const cooksPts = (cooksData || []).flatMap((c) =>
+        c.location?.latitude && c.location?.longitude
+          ? [{ latitude: c.location.latitude, longitude: c.location.longitude }]
+          : []
+      );
+      const mealsPts = (mealsData || []).flatMap((m) => {
+        const c = cooksData.find((cc) => cc.id === m.cookId);
+        return c?.location?.latitude && c?.location?.longitude
+          ? [{ latitude: c.location.latitude, longitude: c.location.longitude }]
+          : [];
+      });
+      const all = [...points, ...(contentType === 'cooks' ? cooksPts : mealsPts)];
+      if (all.length >= 1) {
+        if (all.length === 1) {
+          const single = all[0];
+          setMapRegion((prev: any) => ({
+            latitude: single.latitude,
+            longitude: single.longitude,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+            ...prev,
+          }));
+        } else if (MapView && mapRef.current.fitToCoordinates) {
+          mapRef.current.fitToCoordinates(all, {
+            edgePadding: { top: 80, right: 80, bottom: 80, left: 80 },
+            animated: true,
+          });
+        }
+      }
+    } catch (e) {
+      console.log('MapView: fitToCoordinates failed', e);
+    }
+  }, [contentType, cooksData, mealsData, userLocation]);
+
+if (Platform.OS === 'web') {
     return (
       <View style={styles.mapPlaceholder}>
         <MapPin size={32} color={Colors.primary} />
@@ -235,10 +292,11 @@ export default function CustomMapView({ contentType, meals, cooks }: MapViewProp
         ref={mapRef}
         style={styles.map}
         region={mapRegion}
-        showsUserLocation={hasPermission}
-        showsMyLocationButton={hasPermission}
+        showsUserLocation={!!userLocation}
+        showsMyLocationButton={!!userLocation}
         onRegionChangeComplete={setMapRegion}
         onPress={clearRoute}
+        testID="rn-map"
       >
       {/* Customer location marker */}
       {userLocation && (
@@ -250,7 +308,7 @@ export default function CustomMapView({ contentType, meals, cooks }: MapViewProp
           title="Your Location"
           description="You are here"
           pinColor={Colors.secondary}
-        >
+>
           <View style={styles.customerMarker}>
             <View style={styles.customerMarkerInner}>
               <User size={12} color="white" />
@@ -273,7 +331,7 @@ export default function CustomMapView({ contentType, meals, cooks }: MapViewProp
               title={cook.name}
               description={cook.cuisineTypes?.join(', ') || 'Cook'}
               onPress={() => handleCookMarkerPress(cook)}
-            >
+>
               <View style={[styles.cookMarker, isSelected && styles.selectedMarker]}>
                 <ChefHat size={16} color="white" />
               </View>
@@ -298,6 +356,7 @@ export default function CustomMapView({ contentType, meals, cooks }: MapViewProp
               title={meal.name}
               description={`${meal.cuisineType} • £${meal.price} • by ${cook.name}`}
               onPress={() => handleMealMarkerPress(meal)}
+              testID={`marker-meal-${meal.id}`}
 >
               <View style={[styles.mealMarker, isSelected && styles.selectedMarker]}>
                 <UtensilsCrossed size={16} color="white" />

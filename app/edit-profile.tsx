@@ -32,10 +32,8 @@ export default function EditProfileScreen() {
   const [addressZip, setAddressZip] = useState<string>((user?.location as any)?.zip ?? '');
   const [addressStreet, setAddressStreet] = useState<string>((user?.location as any)?.address ?? '');
   const [addressFull, setAddressFull] = useState<string>((user?.location as any)?.address ?? '');
-  
-
-  
-
+  const [addressLat, setAddressLat] = useState<number | undefined>(user?.location?.latitude);
+  const [addressLng, setAddressLng] = useState<number | undefined>(user?.location?.longitude);
   
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -169,6 +167,8 @@ export default function EditProfileScreen() {
           city: addressCity,
           state: addressState,
           country: addressCountry?.code,
+          latitude: typeof addressLat === 'number' ? addressLat : user?.location?.latitude,
+          longitude: typeof addressLng === 'number' ? addressLng : user?.location?.longitude,
         } as any;
       }
       
@@ -327,6 +327,8 @@ export default function EditProfileScreen() {
                 setAddressZip(next.zipCode ?? '');
                 setAddressStreet(next.streetAddress);
                 setAddressFull(next.fullAddress);
+                if (typeof next.lat === 'number') setAddressLat(next.lat);
+                if (typeof next.lng === 'number') setAddressLng(next.lng);
               }}
               error={errors.address}
               testID="address-fields"

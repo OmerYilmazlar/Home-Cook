@@ -11,6 +11,7 @@ import { Image } from 'expo-image';
 import CookCard from '@/components/CookCard';
 import type { Cook } from '@/types';
 import { userService } from '@/lib/database';
+import { useAuthStore } from '@/store/auth-store';
 
 export default function ExploreScreen() {
   const { colors } = useTheme();
@@ -32,6 +33,7 @@ export default function ExploreScreen() {
   const [cooks, setCooks] = useState<Cook[]>([]);
   const [loadingCooks, setLoadingCooks] = useState<boolean>(false);
   const [cooksError, setCooksError] = useState<string | null>(null);
+  const currentUser = useAuthStore((s) => s.user);
 
   React.useEffect(() => {
     fetchMeals().catch((e) => console.log('Explore: fetchMeals error', e));
@@ -65,6 +67,31 @@ export default function ExploreScreen() {
   }, [query, setSearchQuery]);
 
   const data = useMemo(() => filteredMeals, [filteredMeals]);
+
+  const filteredCooks = useMemo<Cook[]>(() => {
+    let list: Cook[] = cooks;
+    if (currentUser?.id) {
+      list = list.filter((c) => c.id !== currentUser.id);
+    }
+    if (cuisineFilter) {
+      list = list.filter((c) => (c.cuisineTypes ?? []).includes(cuisineFilter as string));
+    }
+    if (ratingFilter) {
+      list = list.filter((c) => (c.rating ?? 0) >= (ratingFilter as number));
+    }
+    if (query) {
+      const q = query.toLowerCase();
+      list = list.filter((c) => {
+        const cuisinesStr = (c.cuisineTypes ?? []).join(' ').toLowerCase();
+        return (
+          (c.name ?? '').toLowerCase().includes(q) ||
+          (c.bio ?? '').toLowerCase().includes(q) ||
+          cuisinesStr.includes(q)
+        );
+      });
+    }
+    return list;
+  }, [cooks, currentUser?.id, cuisineFilter, ratingFilter, query]);
 
   const onCuisinePress = useCallback((name: string | null) => {
     setCuisineFilter(name);
@@ -195,25 +222,25 @@ export default function ExploreScreen() {
             <Text style={[styles.viewSwitchText, { color: viewMode === 'map' ? 'white' : colors.text }]}>Map</Text>
           </TouchableOpacity>
           <View style={styles.resultsRight}>
-            <Text style={[styles.resultsText, { color: colors.subtext }]}>{data.length} results</Text>
+            <Text style={[styles.resultsText, { color: colors.subtext }]}>{mode === 'cooks' ? filteredCooks.length : data.length} results</Text>
           </View>
         </View>
       </View>
 
       {viewMode === 'map' ? (
         <View style={{ flex: 1 }}>
-          <CustomMapView contentType={mode === 'meals' ? 'meals' : 'cooks'} cooks={cooks} />
+          <CustomMapView contentType={mode === 'meals' ? 'meals' : 'cooks'} cooks={filteredCooks} />
         </View>
       ) : mode === 'cooks' ? (
         <FlatList
-          data={cooks}
+          data={filteredCooks}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={[styles.list, cooks.length === 0 && { flex: 1 }]}
+          contentContainerStyle={[styles.list, filteredCooks.length === 0 && { flex: 1 }]}
           renderItem={({ item }) => <CookCard cook={item} />}
           ListEmptyComponent={() => (
             <View style={styles.empty} testID="explore-empty-cooks">
               <Text style={{ color: colors.inactive }}>
-                {loadingCooks ? 'Loading cooks...' : cooksError ?? 'No cooks found.'}
+                {loadingCooks ? 'Loading cooks...' : cooksError ?? 'No cooks match your filters.'}
               </Text>
             </View>
           )}

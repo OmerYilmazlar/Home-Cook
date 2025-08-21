@@ -71,14 +71,16 @@ export default function CookCard({ cook, showFavoriteButton = true }: CookCardPr
             </Text>
           </View>
 
-          {/* Verification Badge */}
-          <VerificationBadge
-            isEmailVerified={cook.isEmailVerified || false}
-            isPhoneVerified={cook.isPhoneVerified || false}
-            hasPhone={!!cook.phone}
-            size="small"
-            style={styles.verificationBadge}
-          />
+          {/* Verification Badge - hidden for customers */}
+          {!isCustomer && (
+            <VerificationBadge
+              isEmailVerified={cook.isEmailVerified ?? false}
+              isPhoneVerified={cook.isPhoneVerified ?? false}
+              hasPhone={!!cook.phone}
+              size="small"
+              style={styles.verificationBadge}
+            />
+          )}
         </View>
       </View>
       

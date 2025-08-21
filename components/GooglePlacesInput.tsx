@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { getAddressSuggestions } from '@/utils/validation';
 import colors from '@/constants/colors';
 
@@ -23,12 +23,11 @@ export const GooglePlacesInput: React.FC<GooglePlacesInputProps> = ({
   label
 }) => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
 
-  // Debounced search for suggestions
   useEffect(() => {
-    if (value.length < 2) {
+    if ((value ?? '').length < 2) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
@@ -46,7 +45,7 @@ export const GooglePlacesInput: React.FC<GooglePlacesInputProps> = ({
         setShowSuggestions(false);
       }
       setIsLoading(false);
-    }, 300); // 300ms debounce
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, [value]);
@@ -63,7 +62,6 @@ export const GooglePlacesInput: React.FC<GooglePlacesInputProps> = ({
   };
 
   const handleBlur = () => {
-    // Hide suggestions after a short delay to allow for selection
     setTimeout(() => setShowSuggestions(false), 150);
   };
 
@@ -76,7 +74,7 @@ export const GooglePlacesInput: React.FC<GooglePlacesInputProps> = ({
   return (
     <View style={[styles.container, style]}>
       {label && <Text style={styles.label}>{label}</Text>}
-      
+
       <View style={styles.inputContainer}>
         <TextInput
           style={[
@@ -93,7 +91,7 @@ export const GooglePlacesInput: React.FC<GooglePlacesInputProps> = ({
           autoComplete="street-address"
           textContentType="fullStreetAddress"
         />
-        
+
         {isLoading && (
           <View style={styles.loadingIndicator}>
             <Text style={styles.loadingText}>...</Text>
@@ -101,27 +99,20 @@ export const GooglePlacesInput: React.FC<GooglePlacesInputProps> = ({
         )}
       </View>
 
-      {/* Suggestions dropdown */}
       {showSuggestions && suggestions.length > 0 && (
         <View style={styles.suggestionsContainer}>
-          <FlatList
-            data={suggestions}
-            keyExtractor={(item, index) => `${item}-${index}`}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.suggestionItem}
-                onPress={() => handleSelectSuggestion(item)}
-              >
-                <Text style={styles.suggestionText}>{item}</Text>
-              </TouchableOpacity>
-            )}
-            style={styles.suggestionsList}
-            nestedScrollEnabled
-          />
+          {suggestions.map((item, index) => (
+            <TouchableOpacity
+              key={`${item}-${index}`}
+              style={styles.suggestionItem}
+              onPress={() => handleSelectSuggestion(item)}
+            >
+              <Text style={styles.suggestionText}>{item}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       )}
 
-      {/* Error message */}
       {error && (
         <Text style={styles.errorText}>{error}</Text>
       )}
@@ -183,9 +174,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 5,
-  },
-  suggestionsList: {
-    maxHeight: 200,
   },
   suggestionItem: {
     paddingHorizontal: 16,

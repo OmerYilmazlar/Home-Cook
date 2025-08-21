@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, StyleSheet, Text, FlatList, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import Colors from '@/constants/colors';
 import Input from '@/components/Input';
 import { CountryPicker } from '@/components/CountryPicker';
@@ -138,16 +138,11 @@ export default function AddressFields({ country, city, stateProvince, zipCode, s
           <Input value={cityQuery} onChangeText={setCity} placeholder="Enter city" testID="city-input" error={!cityValid ? 'Please select a valid city' : undefined} />
           {showCitySuggestions && citySuggestions.length > 0 ? (
             <View style={styles.suggestionsContainer} testID="city-suggestions">
-              <FlatList
-                data={citySuggestions}
-                keyExtractor={(item, idx) => `${item}-${idx}`}
-                renderItem={({ item }) => (
-                  <TouchableOpacity style={styles.suggestionItem} onPress={() => handleSelectCity(item)}>
-                    <Text style={styles.suggestionText}>{item}</Text>
-                  </TouchableOpacity>
-                )}
-                keyboardShouldPersistTaps="handled"
-              />
+              {citySuggestions.map((item, idx) => (
+                <TouchableOpacity key={`${item}-${idx}`} style={styles.suggestionItem} onPress={() => handleSelectCity(item)}>
+                  <Text style={styles.suggestionText}>{item}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
           ) : null}
         </View>
@@ -159,19 +154,18 @@ export default function AddressFields({ country, city, stateProvince, zipCode, s
           <Input value={zipQuery} onChangeText={setZip} placeholder="e.g. EN1 4HW" testID="zip-input" autoCapitalize="characters" />
           {showZipSuggestions && zipSuggestions.length > 0 ? (
             <View style={styles.suggestionsContainer} testID="zip-suggestions">
-              <FlatList
-                data={zipSuggestions}
-                keyExtractor={(item, idx) => `${item}-${idx}`}
-                renderItem={({ item }) => (
-                  <TouchableOpacity style={styles.suggestionItem} onPress={() => {
+              {zipSuggestions.map((item, idx) => (
+                <TouchableOpacity
+                  key={`${item}-${idx}`}
+                  style={styles.suggestionItem}
+                  onPress={() => {
                     setShowZipSuggestions(false);
                     setZip(item);
-                  }}>
-                    <Text style={styles.suggestionText}>{item}</Text>
-                  </TouchableOpacity>
-                )}
-                keyboardShouldPersistTaps="handled"
-              />
+                  }}
+                >
+                  <Text style={styles.suggestionText}>{item}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
           ) : null}
         </View>

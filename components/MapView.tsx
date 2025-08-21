@@ -55,7 +55,7 @@ export default function CustomMapView({ contentType, meals, cooks }: MapViewProp
     }
   }, [mapRegion]);
 
-  // Handle selectedMeal from URL params
+  // Handle selectedMeal from URL params and when cooks load
   useEffect(() => {
     if (selectedMeal && typeof selectedMeal === 'string') {
       fetchMealById(selectedMeal);
@@ -64,7 +64,7 @@ export default function CustomMapView({ contentType, meals, cooks }: MapViewProp
         handleMealMarkerPress(meal);
       }
     }
-  }, [selectedMeal, mealsData, fetchMealById]);
+  }, [selectedMeal, mealsData, cooksData.length, fetchMealById]);
 
 
 

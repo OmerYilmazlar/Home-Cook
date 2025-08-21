@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Platform } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '@/store/theme-store';
 import { useMealsStore } from '@/store/meals-store';
 import { Filter, Star, List as ListIcon, Map as MapIcon, Search } from 'lucide-react-native';
@@ -24,6 +24,7 @@ export default function ExploreScreen() {
     cuisineFilter,
     ratingFilter,
   } = useMealsStore();
+  const params = useLocalSearchParams();
 
   const [mode, setMode] = useState<'meals' | 'cooks'>('meals');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
@@ -35,6 +36,13 @@ export default function ExploreScreen() {
   React.useEffect(() => {
     fetchMeals().catch((e) => console.log('Explore: fetchMeals error', e));
   }, [fetchMeals]);
+
+  React.useEffect(() => {
+    if (params.selectedMeal) {
+      setMode('meals');
+      setViewMode('map');
+    }
+  }, [params.selectedMeal]);
 
   React.useEffect(() => {
     if ((mode === 'cooks' || viewMode === 'map') && cooks.length === 0 && !loadingCooks) {

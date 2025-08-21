@@ -84,8 +84,8 @@ export default function MealDetailScreen() {
       return;
     }
     
-    // Navigate to map view with this meal selected
-    router.push(`/(tabs)/explore-map?selectedMeal=${selectedMeal.id}` as any);
+    // Navigate to Explore tab map with this meal highlighted
+    router.push(`/(tabs)/explore?selectedMeal=${selectedMeal.id}` as any);
   };
   
   // Initialize wallets for users

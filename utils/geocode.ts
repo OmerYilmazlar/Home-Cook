@@ -41,7 +41,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<ReverseG
       const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`;
       const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
       const data = await res.json();
-      const address = data?.address ?? {} as any;
+      const address = data?.address ?? ({} as any);
       const street = [address.house_number, address.road].filter(Boolean).join(' ').trim();
       const city = address.city || address.town || address.village || '';
       const state = address.state || '';
@@ -65,6 +65,26 @@ export async function reverseGeocode(lat: number, lng: number): Promise<ReverseG
     return { street, city, state, zip, countryName, countryCode, formatted };
   } catch (e) {
     console.log('reverseGeocode error', e);
+    return null;
+  }
+}
+
+export async function geocodeAddress(address: string): Promise<{ latitude: number; longitude: number } | null> {
+  try {
+    const query = encodeURIComponent(address);
+    const url = `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`;
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    const json = await res.json();
+    const first = Array.isArray(json) ? json[0] : null;
+    if (!first) return null;
+    const lat = parseFloat(first.lat);
+    const lon = parseFloat(first.lon);
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      return { latitude: lat, longitude: lon };
+    }
+    return null;
+  } catch (e) {
+    console.log('geocodeAddress error', e);
     return null;
   }
 }

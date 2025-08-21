@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, Platform, Alert, TouchableOpacity } from 'react-native';
 import { MapPin, User, ChefHat, UtensilsCrossed, X, Navigation } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -40,8 +40,46 @@ export default function CustomMapView({ contentType, meals, cooks }: MapViewProp
   const [availabilityTime, setAvailabilityTime] = useState<string>('');
   const { filteredMeals, fetchMealById } = useMealsStore();
   const mealsData = meals ?? filteredMeals;
-  const cooksData: Cook[] = cooks ?? [];
-  console.log('MapView: data snapshot', { contentType, mealsCount: mealsData?.length ?? 0, cooksCount: cooksData?.length ?? 0 });
+  const [cooksState, setCooksState] = useState<Cook[]>(cooks ?? []);
+  console.log('MapView: data snapshot', { contentType, mealsCount: mealsData?.length ?? 0, cooksCount: cooksState?.length ?? 0 });
+
+  // Load cooks if not provided
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        let list = cooks ?? [];
+        if (list.length === 0) {
+          const { userService } = await import('@/lib/database');
+          list = await userService.getAllCooks();
+        }
+        // Enrich cooks that have address but missing lat/lng
+        const needGeocode = (list || []).filter(c => !c.location?.latitude && !c.location?.longitude && !!c.location?.address);
+        if (needGeocode.length > 0) {
+          try {
+            const { geocodeAddress } = await import('@/utils/geocode');
+            const enrichedPromises = list.map(async (c) => {
+              if (!c.location?.latitude && !c.location?.longitude && c.location?.address) {
+                const coords = await geocodeAddress(c.location.address);
+                if (coords) {
+                  return { ...c, location: { ...c.location, ...coords } } as Cook;
+                }
+              }
+              return c;
+            });
+            list = await Promise.all(enrichedPromises);
+          } catch (gerr) {
+            console.log('MapView: geocode enrichment failed', gerr);
+          }
+        }
+        if (!cancelled) setCooksState(list ?? []);
+        console.log('MapView: loaded cooks', list?.length ?? 0);
+      } catch (e) {
+        console.log('MapView: failed to load cooks', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [cooks]);
 
   // Ensure permission and set initial region
   useEffect(() => {
@@ -81,7 +119,7 @@ export default function CustomMapView({ contentType, meals, cooks }: MapViewProp
         handleMealMarkerPress(meal);
       }
     }
-  }, [selectedMeal, mealsData, cooksData.length, fetchMealById]);
+  }, [selectedMeal, mealsData, cooksState.length, fetchMealById]);
 
 
 
@@ -93,13 +131,12 @@ export default function CustomMapView({ contentType, meals, cooks }: MapViewProp
       if (userLocation) {
         points.push({ latitude: userLocation.coords.latitude, longitude: userLocation.coords.longitude });
       }
-      const cooksPts = (cooksData || []).flatMap((c) =>
-        c.location?.latitude && c.location?.longitude
+      const cooksPts = (cooksState || []).flatMap((c) =>        c.location?.latitude && c.location?.longitude
           ? [{ latitude: c.location.latitude, longitude: c.location.longitude }]
           : []
       );
       const mealsPts = (mealsData || []).flatMap((m) => {
-        const c = cooksData.find((cc) => cc.id === m.cookId);
+        const c = cooksState.find((cc) => cc.id === m.cookId);
         return c?.location?.latitude && c?.location?.longitude
           ? [{ latitude: c.location.latitude, longitude: c.location.longitude }]
           : [];
@@ -126,7 +163,7 @@ export default function CustomMapView({ contentType, meals, cooks }: MapViewProp
     } catch (e) {
       console.log('MapView: fitToCoordinates failed', e);
     }
-  }, [contentType, cooksData, mealsData, userLocation]);
+  }, [contentType, cooksState, mealsData, userLocation]);
 
 if (Platform.OS === 'web') {
     return (
@@ -257,12 +294,18 @@ if (Platform.OS === 'web') {
 
   const handleMealMarkerPress = async (meal: any) => {
     try {
-      let cook = cooksData.find(c => c.id === meal.cookId);
+      let cook = cooksState.find(c => c.id === meal.cookId);
       if (!cook) {
         try {
           const { userService } = await import('@/lib/database');
           const fetched = await userService.getUserById(meal.cookId);
           cook = fetched as Cook | null as any;
+          if (cook) {
+            setCooksState(prev => {
+              if (prev.some(p => p.id === cook!.id)) return prev;
+              return [...prev, cook!];
+            });
+          }
         } catch (e) {
           console.log('MapView: failed to fetch cook by id', e);
         }
@@ -338,7 +381,7 @@ if (Platform.OS === 'web') {
       )}
 
       {/* Cook markers */}
-      {contentType === 'cooks' && cooksData.map((cook) => {
+      {contentType === 'cooks' && cooksState.map((cook) => {
         if (cook.location?.latitude && cook.location?.longitude) {
           const isSelected = selectedMarker?.id === cook.id && selectedMarker?.type === 'cook';
           return (
@@ -363,7 +406,7 @@ if (Platform.OS === 'web') {
 
       {/* Meal markers */}
       {contentType === 'meals' && mealsData.map((meal) => {
-        const cook = cooksData.find(c => c.id === meal.cookId);
+        const cook = cooksState.find(c => c.id === meal.cookId);
         if (cook?.location?.latitude && cook?.location?.longitude) {
           const isSelected = selectedMarker?.id === meal.id && selectedMarker?.type === 'meal';
           return (

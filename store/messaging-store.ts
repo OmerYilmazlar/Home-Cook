@@ -4,6 +4,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message, Conversation } from '@/types';
 import { messageService } from '@/lib/database';
 
+function getConversationId(a: string, b: string): string {
+  return [a, b].sort().join(':');
+}
+
 interface MessagingState {
   conversations: Conversation[];
   currentConversation: Conversation | null;
@@ -47,7 +51,7 @@ export const useMessagingStore = create<MessagingState>()(persist(
         const isMine = m.senderId === userId || m.receiverId === userId;
         if (!isMine) return;
         const otherId = m.senderId === userId ? m.receiverId : m.senderId;
-        const key = `${userId}-${otherId}`;
+        const key = getConversationId(userId, otherId);
         if (!byConversation[key]) {
           byConversation[key] = { participants: [userId, otherId], messages: [] };
         }
@@ -87,7 +91,7 @@ export const useMessagingStore = create<MessagingState>()(persist(
       const messages = await messageService.getMessagesBetweenUsers(userId1, userId2);
       
       // Create or find conversation
-      const conversationId = `${userId1}-${userId2}`;
+      const conversationId = getConversationId(userId1, userId2);
       const conversation: Conversation = {
         id: conversationId,
         participants: [userId1, userId2],
@@ -122,30 +126,42 @@ export const useMessagingStore = create<MessagingState>()(persist(
       set(state => {
         // Add message to global messages array
         const updatedAllMessages = [...state.allMessages, newMessage];
-        
-        // Add message to current conversation messages
+
+        // Determine conversation id and participants
+        const convId = getConversationId(newMessage.senderId, newMessage.receiverId);
+        const participants: [string, string] = [newMessage.senderId, newMessage.receiverId];
+
+        // Add message to current conversation messages (or start a new thread in UI)
         const updatedMessages = [...state.messages, newMessage];
-        
-        // Update current conversation's last message
-        let updatedCurrentConversation = state.currentConversation;
-        if (updatedCurrentConversation) {
+
+        // Ensure there's a current conversation
+        let updatedCurrentConversation: Conversation | null = state.currentConversation;
+        if (!updatedCurrentConversation || updatedCurrentConversation.id !== convId) {
+          updatedCurrentConversation = {
+            id: convId,
+            participants,
+            lastMessage: newMessage,
+            unreadCount: 0,
+          } as Conversation;
+        } else {
           updatedCurrentConversation = {
             ...updatedCurrentConversation,
             lastMessage: newMessage,
-          };
+          } as Conversation;
         }
-        
-        // Update conversation in conversations array
-        const updatedConversations = state.conversations.map(conversation => {
-          if (conversation.id === state.currentConversation?.id) {
-            return {
-              ...conversation,
-              lastMessage: newMessage,
-            };
-          }
-          return conversation;
-        });
-        
+
+        // Upsert conversation in conversations array
+        const existingIdx = state.conversations.findIndex(c => c.id === convId);
+        let updatedConversations: Conversation[];
+        if (existingIdx >= 0) {
+          updatedConversations = state.conversations.map((c, i) => i === existingIdx ? { ...c, lastMessage: newMessage } as Conversation : c);
+        } else {
+          updatedConversations = [
+            { id: convId, participants, lastMessage: newMessage, unreadCount: 0 } as Conversation,
+            ...state.conversations,
+          ];
+        }
+
         return {
           allMessages: updatedAllMessages,
           messages: updatedMessages,
@@ -232,7 +248,7 @@ export const useMessagingStore = create<MessagingState>()(persist(
       
       // Create new conversation
       const newConversation: Conversation = {
-        id: `${participants[0]}-${participants[1]}`,
+        id: getConversationId(participants[0], participants[1]),
         participants,
         unreadCount: 0,
       };

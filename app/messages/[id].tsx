@@ -155,11 +155,12 @@ export default function MessageScreen() {
               maxLength={500}
               placeholderTextColor={Colors.grey}
               onFocus={() => {
-                // Scroll to bottom when input is focused
                 setTimeout(() => {
                   flatListRef.current?.scrollToEnd({ animated: true });
                 }, 300);
               }}
+              testID="message-input"
+              accessibilityLabel="Message input"
             />
             
             <TouchableOpacity
@@ -169,6 +170,9 @@ export default function MessageScreen() {
               ]}
               onPress={handleSend}
               disabled={!messageText.trim()}
+              testID="send-button"
+              accessibilityRole="button"
+              accessibilityLabel="Send message"
             >
               <Send size={18} color={Colors.white} />
             </TouchableOpacity>

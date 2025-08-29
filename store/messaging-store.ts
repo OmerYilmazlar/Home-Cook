@@ -113,15 +113,18 @@ export const useMessagingStore = create<MessagingState>()(persist(
   },
   
   sendMessage: async (messageData) => {
+    console.log('📤 MessagingStore: sendMessage called with:', messageData);
     set({ isLoading: true, error: null });
     
     try {
       // Send message to Supabase
+      console.log('📤 MessagingStore: Calling messageService.sendMessage...');
       const newMessage = await messageService.sendMessage(
         messageData.senderId,
         messageData.receiverId,
         messageData.content
       );
+      console.log('✅ MessagingStore: Message sent successfully:', newMessage);
       
       set(state => {
         // Add message to global messages array

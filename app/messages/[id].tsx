@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, View, TextInput, FlatList, KeyboardAvoidingView, Platform, TouchableOpacity, Keyboard } from 'react-native';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { StyleSheet, View, TextInput, FlatList, KeyboardAvoidingView, Platform, TouchableOpacity, Keyboard, Dimensions } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useHeaderHeight } from '@react-navigation/elements';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Send } from 'lucide-react-native';
 import { useAuthStore } from '@/store/auth-store';
@@ -19,6 +20,8 @@ export default function MessageScreen() {
   const { currentConversation, messages, fetchMessages, sendMessage, markAsRead, initializeMessages } = useMessagingStore();
   
   const [messageText, setMessageText] = useState('');
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
   
@@ -29,7 +32,9 @@ export default function MessageScreen() {
     // Keyboard listeners
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => {
+      (event) => {
+        setKeyboardHeight(event.endCoordinates.height);
+        setIsKeyboardVisible(true);
         // Scroll to bottom when keyboard shows
         setTimeout(() => {
           flatListRef.current?.scrollToEnd({ animated: true });
@@ -40,7 +45,8 @@ export default function MessageScreen() {
     const keyboardWillHide = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       () => {
-        // Keyboard hidden
+        setKeyboardHeight(0);
+        setIsKeyboardVisible(false);
       }
     );
     
@@ -48,15 +54,15 @@ export default function MessageScreen() {
       keyboardWillShow.remove();
       keyboardWillHide.remove();
     };
-  }, []);
+  }, [initializeMessages]);
   
   // Refresh messages when screen comes into focus or when id/user changes
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       if (id && typeof id === 'string' && user?.id) {
         fetchMessages(user.id, id);
       }
-    }, [id, user?.id])
+    }, [id, user?.id, fetchMessages])
   );
   
   useEffect(() => {
@@ -66,7 +72,7 @@ export default function MessageScreen() {
         markAsRead(user.id, id);
       }
     }
-  }, [messages, user?.id, id]);
+  }, [messages, user?.id, id, markAsRead]);
   
   const getOtherUser = () => {
     if (!id || typeof id !== 'string') return null;
@@ -111,26 +117,32 @@ export default function MessageScreen() {
   );
   
   const headerHeight = useHeaderHeight();
+  const insets = useSafeAreaInsets();
+  const screenHeight = Dimensions.get('window').height;
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
-    >
+    <View style={styles.container}>
       <Stack.Screen
         options={{
           title: otherUser?.name || 'Messages',
         }}
       />
 
-      <View style={styles.messagesWrapper}>
+      <View style={[
+        styles.messagesWrapper,
+        isKeyboardVisible && {
+          marginBottom: Platform.OS === 'android' ? keyboardHeight : 0
+        }
+      ]}>
         <FlatList
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.messagesContainer}
+          contentContainerStyle={[
+            styles.messagesContainer,
+            { paddingBottom: isKeyboardVisible ? 20 : 100 }
+          ]}
           style={styles.messagesList}
           onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
@@ -144,8 +156,20 @@ export default function MessageScreen() {
         />
       </View>
 
-      <View style={styles.inputContainer}>
-        <View style={styles.inputWrapper}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
+      >
+        <View style={[
+          styles.inputContainer,
+          Platform.OS === 'android' && isKeyboardVisible && {
+            position: 'absolute',
+            bottom: keyboardHeight,
+            left: 0,
+            right: 0,
+          }
+        ]}>
+          <View style={styles.inputWrapper}>
           <TextInput
             style={styles.input}
             placeholder="Type a message..."
@@ -176,9 +200,10 @@ export default function MessageScreen() {
           >
             <Send size={18} color={Colors.white} />
           </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -196,7 +221,6 @@ const styles = StyleSheet.create({
   messagesContainer: {
     padding: 20,
     flexGrow: 1,
-    paddingBottom: 100,
   },
   inputContainer: {
     backgroundColor: Colors.white,

@@ -749,6 +749,12 @@ export const messageService = {
         senderMatches: session?.user?.id === senderId,
         sessionError: sessionError?.message
       });
+      
+      // If no session, try to create one with the sender ID
+      if (!session) {
+        console.log('⚠️ MessageService: No active session, this might cause RLS issues');
+        console.log('💡 MessageService: Consider implementing proper authentication');
+      }
     } catch (e) {
       console.log('🔐 MessageService: Session check failed:', e);
     }
@@ -775,6 +781,18 @@ export const messageService = {
           details: error.details,
           hint: error.hint
         });
+        
+        // Check if it's an RLS policy violation
+        if (error.code === '42501' || error.message?.includes('policy')) {
+          console.error('🚫 MessageService: RLS Policy violation - check your database policies');
+          console.error('💡 MessageService: Run the fix-messages-rls.sql script in your Supabase SQL editor');
+        }
+        
+        // Check if it's an authentication issue
+        if (error.code === 'PGRST301' || error.message?.includes('JWT')) {
+          console.error('🔐 MessageService: Authentication issue - user not properly authenticated');
+        }
+        
         throw error;
       }
 

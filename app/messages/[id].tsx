@@ -3,6 +3,7 @@ import { StyleSheet, View, TextInput, FlatList, KeyboardAvoidingView, Platform, 
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useHeaderHeight } from '@react-navigation/elements';
+
 import { Send } from 'lucide-react-native';
 import { useAuthStore } from '@/store/auth-store';
 import { useMessagingStore } from '@/store/messaging-store';
@@ -109,8 +110,6 @@ export default function MessageScreen() {
     />
   );
   
-  const inputContainerHeight = 80; // Approximate input container height
-
   const headerHeight = useHeaderHeight();
 
   return (
@@ -131,10 +130,7 @@ export default function MessageScreen() {
           data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={[
-            styles.messagesContainer,
-            { paddingBottom: inputContainerHeight + 20 }
-          ]}
+          contentContainerStyle={styles.messagesContainer}
           style={styles.messagesList}
           onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
@@ -200,12 +196,13 @@ const styles = StyleSheet.create({
   messagesContainer: {
     padding: 20,
     flexGrow: 1,
+    paddingBottom: 100,
   },
   inputContainer: {
     backgroundColor: Colors.white,
     borderTopWidth: 1,
     borderTopColor: Colors.borderLight,
-    paddingBottom: Platform.OS === 'ios' ? 16 : 16,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
     shadowColor: Colors.shadow,
     shadowOffset: {
       width: 0,

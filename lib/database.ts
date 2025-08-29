@@ -647,6 +647,8 @@ export const mealService = {
 // Supabase-backed message service with AsyncStorage fallback for resilience
 export const messageService = {
   async getMessagesBetweenUsers(userId1: string, userId2: string): Promise<Message[]> {
+    console.log('💬 MessageService: Fetching messages between:', userId1, 'and', userId2);
+    
     try {
       const { data, error } = await supabase
         .from('messages')
@@ -657,11 +659,13 @@ export const messageService = {
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.warn('messageService.getMessagesBetweenUsers supabase error, falling back to local', error);
+        console.warn('💬 MessageService: Supabase fetch error, falling back to local:', error);
         throw error;
       }
 
       const rows = data ?? [];
+      console.log('✅ MessageService: Fetched', rows.length, 'messages from Supabase');
+      
       const messages: Message[] = rows.map((r: any) => ({
         id: r.id,
         senderId: r.sender_id,
@@ -673,17 +677,33 @@ export const messageService = {
 
       // Keep a local mirror for offline access
       try {
-        await AsyncStorage.setItem('messages', JSON.stringify(messages));
+        const raw = await AsyncStorage.getItem('messages');
+        const existingMessages: Message[] = raw ? (JSON.parse(raw) as Message[]) : [];
+        
+        // Merge with existing messages, avoiding duplicates
+        const allMessages = [...existingMessages];
+        messages.forEach(newMsg => {
+          const existingIndex = allMessages.findIndex(existing => existing.id === newMsg.id);
+          if (existingIndex >= 0) {
+            allMessages[existingIndex] = newMsg; // Update existing
+          } else {
+            allMessages.push(newMsg); // Add new
+          }
+        });
+        
+        await AsyncStorage.setItem('messages', JSON.stringify(allMessages));
+        console.log('✅ MessageService: Local mirror updated with', allMessages.length, 'total messages');
       } catch (e) {
-        console.log('messageService.getMessagesBetweenUsers local mirror error', e);
+        console.log('⚠️ MessageService: Local mirror update failed:', e);
       }
 
       return messages;
     } catch (_e) {
+      console.log('💬 MessageService: Using local storage fallback');
       try {
         const raw = await AsyncStorage.getItem('messages');
         const all: Message[] = raw ? (JSON.parse(raw) as Message[]) : [];
-        return all
+        const filtered = all
           .filter(
             (m: Message) =>
               (m.senderId === userId1 && m.receiverId === userId2) ||
@@ -693,8 +713,10 @@ export const messageService = {
             (a: Message, b: Message) =>
               new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
           );
+        console.log('✅ MessageService: Returning', filtered.length, 'messages from local storage');
+        return filtered;
       } catch (e) {
-        console.log('messageService.getMessagesBetweenUsers fallback error', e);
+        console.error('❌ MessageService: Local storage fallback failed:', e);
         return [];
       }
     }
@@ -711,6 +733,26 @@ export const messageService = {
       read: false,
     };
 
+    console.log('💬 MessageService: Attempting to send message:', {
+      senderId,
+      receiverId,
+      content: content.substring(0, 50) + '...',
+      messageId: optimistic.id
+    });
+
+    // Check current auth session
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('🔐 MessageService: Current session:', {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        senderMatches: session?.user?.id === senderId,
+        sessionError: sessionError?.message
+      });
+    } catch (e) {
+      console.log('🔐 MessageService: Session check failed:', e);
+    }
+
     // Try Supabase first
     try {
       const { data, error } = await supabase
@@ -726,7 +768,17 @@ export const messageService = {
         .select('*')
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('💬 MessageService: Supabase insert error:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        throw error;
+      }
+
+      console.log('✅ MessageService: Message saved to Supabase successfully:', data.id);
 
       const saved: Message = {
         id: data.id,
@@ -742,20 +794,22 @@ export const messageService = {
         const raw = await AsyncStorage.getItem('messages');
         const all: Message[] = raw ? (JSON.parse(raw) as Message[]) : [];
         await AsyncStorage.setItem('messages', JSON.stringify([...all, saved]));
+        console.log('✅ MessageService: Local mirror updated');
       } catch (e) {
-        console.log('messageService.sendMessage local mirror error', e);
+        console.log('⚠️ MessageService: Local mirror update failed:', e);
       }
 
       return saved;
     } catch (e) {
-      console.warn('messageService.sendMessage supabase error, saving locally', e);
+      console.warn('❌ MessageService: Supabase save failed, using local storage:', e);
       try {
         const raw = await AsyncStorage.getItem('messages');
         const all: Message[] = raw ? (JSON.parse(raw) as Message[]) : [];
         const updated = [...all, optimistic];
         await AsyncStorage.setItem('messages', JSON.stringify(updated));
+        console.log('✅ MessageService: Message saved locally as fallback');
       } catch (se) {
-        console.log('messageService.sendMessage local save error', se);
+        console.error('❌ MessageService: Local save also failed:', se);
       }
       return optimistic;
     }

@@ -644,56 +644,160 @@ export const mealService = {
   }
 };
 
-// Simple AsyncStorage-backed message service for local/demo messaging
+// Supabase-backed message service with AsyncStorage fallback for resilience
 export const messageService = {
   async getMessagesBetweenUsers(userId1: string, userId2: string): Promise<Message[]> {
     try {
-      const raw = await AsyncStorage.getItem('messages');
-      const all: Message[] = raw ? JSON.parse(raw) as Message[] : [];
-      const result = all
-        .filter((m: Message) => (m.senderId === userId1 && m.receiverId === userId2) || (m.senderId === userId2 && m.receiverId === userId1))
-        .sort((a: Message, b: Message) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-      return result;
-    } catch (e) {
-      console.log('messageService.getMessagesBetweenUsers error', e);
-      return [];
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .or(
+          `and(sender_id.eq.${userId1},receiver_id.eq.${userId2}),and(sender_id.eq.${userId2},receiver_id.eq.${userId1})`
+        )
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.warn('messageService.getMessagesBetweenUsers supabase error, falling back to local', error);
+        throw error;
+      }
+
+      const rows = data ?? [];
+      const messages: Message[] = rows.map((r: any) => ({
+        id: r.id,
+        senderId: r.sender_id,
+        receiverId: r.receiver_id,
+        content: r.content,
+        createdAt: r.created_at,
+        read: !!r.read,
+      } as Message));
+
+      // Keep a local mirror for offline access
+      try {
+        await AsyncStorage.setItem('messages', JSON.stringify(messages));
+      } catch (e) {
+        console.log('messageService.getMessagesBetweenUsers local mirror error', e);
+      }
+
+      return messages;
+    } catch (_e) {
+      try {
+        const raw = await AsyncStorage.getItem('messages');
+        const all: Message[] = raw ? (JSON.parse(raw) as Message[]) : [];
+        return all
+          .filter(
+            (m: Message) =>
+              (m.senderId === userId1 && m.receiverId === userId2) ||
+              (m.senderId === userId2 && m.receiverId === userId1)
+          )
+          .sort(
+            (a: Message, b: Message) =>
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+      } catch (e) {
+        console.log('messageService.getMessagesBetweenUsers fallback error', e);
+        return [];
+      }
     }
   },
 
   async sendMessage(senderId: string, receiverId: string, content: string): Promise<Message> {
-    const newMessage: Message = {
+    const timestamp = new Date().toISOString();
+    const optimistic: Message = {
       id: `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       senderId,
       receiverId,
       content,
-      createdAt: new Date().toISOString(),
+      createdAt: timestamp,
       read: false,
     };
+
+    // Try Supabase first
     try {
-      const raw = await AsyncStorage.getItem('messages');
-      const all: Message[] = raw ? JSON.parse(raw) as Message[] : [];
-      const updated = [...all, newMessage];
-      await AsyncStorage.setItem('messages', JSON.stringify(updated));
-      return newMessage;
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          sender_id: senderId,
+          receiver_id: receiverId,
+          content,
+          read: false,
+          created_at: timestamp,
+        })
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      const saved: Message = {
+        id: data.id,
+        senderId: data.sender_id,
+        receiverId: data.receiver_id,
+        content: data.content,
+        createdAt: data.created_at,
+        read: !!data.read,
+      };
+
+      // Update local mirror as well
+      try {
+        const raw = await AsyncStorage.getItem('messages');
+        const all: Message[] = raw ? (JSON.parse(raw) as Message[]) : [];
+        await AsyncStorage.setItem('messages', JSON.stringify([...all, saved]));
+      } catch (e) {
+        console.log('messageService.sendMessage local mirror error', e);
+      }
+
+      return saved;
     } catch (e) {
-      console.log('messageService.sendMessage error', e);
-      return newMessage;
+      console.warn('messageService.sendMessage supabase error, saving locally', e);
+      try {
+        const raw = await AsyncStorage.getItem('messages');
+        const all: Message[] = raw ? (JSON.parse(raw) as Message[]) : [];
+        const updated = [...all, optimistic];
+        await AsyncStorage.setItem('messages', JSON.stringify(updated));
+      } catch (se) {
+        console.log('messageService.sendMessage local save error', se);
+      }
+      return optimistic;
     }
   },
 
   async markMessagesAsRead(userId: string, otherUserId: string): Promise<void> {
     try {
-      const raw = await AsyncStorage.getItem('messages');
-      const all: Message[] = raw ? JSON.parse(raw) as Message[] : [];
-      const updated = all.map((m: Message) => {
-        if (m.senderId === otherUserId && m.receiverId === userId && !m.read) {
-          return { ...m, read: true } as Message;
-        }
-        return m;
-      });
-      await AsyncStorage.setItem('messages', JSON.stringify(updated));
+      const { error } = await supabase
+        .from('messages')
+        .update({ read: true })
+        .eq('receiver_id', userId)
+        .eq('sender_id', otherUserId)
+        .eq('read', false);
+
+      if (error) throw error;
+
+      // Update local mirror
+      try {
+        const raw = await AsyncStorage.getItem('messages');
+        const all: Message[] = raw ? (JSON.parse(raw) as Message[]) : [];
+        const updated = all.map((m) =>
+          m.senderId === otherUserId && m.receiverId === userId && !m.read
+            ? { ...m, read: true }
+            : m
+        );
+        await AsyncStorage.setItem('messages', JSON.stringify(updated));
+      } catch (le) {
+        console.log('messageService.markMessagesAsRead local mirror error', le);
+      }
     } catch (e) {
-      console.log('messageService.markMessagesAsRead error', e);
+      console.log('messageService.markMessagesAsRead supabase error, local-only update', e);
+      try {
+        const raw = await AsyncStorage.getItem('messages');
+        const all: Message[] = raw ? (JSON.parse(raw) as Message[]) : [];
+        const updated = all.map((m) =>
+          m.senderId === otherUserId && m.receiverId === userId && !m.read
+            ? { ...m, read: true }
+            : m
+        );
+        await AsyncStorage.setItem('messages', JSON.stringify(updated));
+      } catch (le) {
+        console.log('messageService.markMessagesAsRead local fallback error', le);
+      }
     }
   },
 };

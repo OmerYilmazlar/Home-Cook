@@ -111,13 +111,17 @@ export default function MessageScreen() {
   const inputContainerHeight = 80; // Approximate input container height
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
       <Stack.Screen
         options={{
           title: otherUser?.name || 'Messages',
         }}
       />
-      
+
       <View style={styles.messagesWrapper}>
         <FlatList
           ref={flatListRef}
@@ -137,49 +141,45 @@ export default function MessageScreen() {
             minIndexForVisible: 0,
             autoscrollToTopThreshold: 10,
           }}
+          testID="messages-list"
         />
       </View>
-      
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
-        <View style={styles.inputContainer}>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="Type a message..."
-              value={messageText}
-              onChangeText={setMessageText}
-              multiline
-              maxLength={500}
-              placeholderTextColor={Colors.grey}
-              onFocus={() => {
-                setTimeout(() => {
-                  flatListRef.current?.scrollToEnd({ animated: true });
-                }, 300);
-              }}
-              testID="message-input"
-              accessibilityLabel="Message input"
-            />
-            
-            <TouchableOpacity
-              style={[
-                styles.sendButton,
-                !messageText.trim() && styles.sendButtonDisabled
-              ]}
-              onPress={handleSend}
-              disabled={!messageText.trim()}
-              testID="send-button"
-              accessibilityRole="button"
-              accessibilityLabel="Send message"
-            >
-              <Send size={18} color={Colors.white} />
-            </TouchableOpacity>
-          </View>
+
+      <View style={styles.inputContainer}>
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.input}
+            placeholder="Type a message..."
+            value={messageText}
+            onChangeText={setMessageText}
+            multiline
+            maxLength={500}
+            placeholderTextColor={Colors.grey}
+            onFocus={() => {
+              setTimeout(() => {
+                flatListRef.current?.scrollToEnd({ animated: true });
+              }, 300);
+            }}
+            testID="message-input"
+            accessibilityLabel="Message input"
+          />
+
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              !messageText.trim() && styles.sendButtonDisabled
+            ]}
+            onPress={handleSend}
+            disabled={!messageText.trim()}
+            testID="send-button"
+            accessibilityRole="button"
+            accessibilityLabel="Send message"
+          >
+            <Send size={18} color={Colors.white} />
+          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderTopWidth: 1,
     borderTopColor: Colors.borderLight,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    paddingBottom: Platform.OS === 'ios' ? 16 : 16,
     shadowColor: Colors.shadow,
     shadowOffset: {
       width: 0,

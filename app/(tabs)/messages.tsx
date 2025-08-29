@@ -71,6 +71,8 @@ export default function MessagesScreen() {
         renderItem={renderConversationItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
+        onRefresh={() => user?.id ? fetchConversations(user.id) : undefined}
+        refreshing={isLoading}
       />
     </View>
   );

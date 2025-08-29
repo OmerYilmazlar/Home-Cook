@@ -13,7 +13,7 @@ interface MessagingState {
   error: string | null;
   
   fetchConversations: (userId: string) => Promise<void>;
-  fetchMessages: (conversationId: string) => Promise<void>;
+  fetchMessages: (userId1: string, userId2: string) => Promise<void>;
   sendMessage: (message: Omit<Message, 'id' | 'createdAt' | 'read'>) => Promise<void>;
   markAsRead: (userId: string, otherUserId: string) => Promise<void>;
   createConversation: (participants: string[]) => Promise<string>;
@@ -36,14 +36,41 @@ export const useMessagingStore = create<MessagingState>()(persist(
   
   fetchConversations: async (userId: string) => {
     set({ isLoading: true, error: null });
-    
+
     try {
-      // For now, we'll create a simplified conversation list
-      // In a real app, this would fetch from Supabase
-      set({ 
-        conversations: [],
-        isLoading: false 
+      const raw = await AsyncStorage.getItem('messages');
+      const all: Message[] = raw ? JSON.parse(raw) as Message[] : [];
+
+      const byConversation: Record<string, { participants: [string, string]; messages: Message[] }> = {};
+
+      all.forEach((m: Message) => {
+        const isMine = m.senderId === userId || m.receiverId === userId;
+        if (!isMine) return;
+        const otherId = m.senderId === userId ? m.receiverId : m.senderId;
+        const key = `${userId}-${otherId}`;
+        if (!byConversation[key]) {
+          byConversation[key] = { participants: [userId, otherId], messages: [] };
+        }
+        byConversation[key].messages.push(m);
       });
+
+      const conversations: Conversation[] = Object.entries(byConversation).map(([id, data]) => {
+        const sorted = data.messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        const last = sorted[sorted.length - 1];
+        const unreadCount = sorted.filter((m) => !m.read && m.receiverId === userId).length;
+        return {
+          id,
+          participants: data.participants,
+          lastMessage: last,
+          unreadCount,
+        } as Conversation;
+      }).sort((a, b) => {
+        const at = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
+        const bt = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
+        return bt - at;
+      });
+
+      set({ conversations, isLoading: false });
     } catch (error) {
       set({ 
         error: error instanceof Error ? error.message : 'Failed to fetch conversations', 
@@ -52,21 +79,11 @@ export const useMessagingStore = create<MessagingState>()(persist(
     }
   },
   
-  fetchMessages: async (userId1: string, userId2?: string) => {
+  fetchMessages: async (userId1: string, userId2: string) => {
     set({ isLoading: true, error: null });
     
     try {
-      if (!userId2) {
-        // If only one user ID provided, create empty conversation
-        set({ 
-          currentConversation: null,
-          messages: [],
-          isLoading: false 
-        });
-        return;
-      }
-      
-      // Fetch messages between two users from Supabase
+      // Fetch messages between two users
       const messages = await messageService.getMessagesBetweenUsers(userId1, userId2);
       
       // Create or find conversation
@@ -75,7 +92,7 @@ export const useMessagingStore = create<MessagingState>()(persist(
         id: conversationId,
         participants: [userId1, userId2],
         lastMessage: messages.length > 0 ? messages[messages.length - 1] : undefined,
-        unreadCount: messages.filter(m => !m.read && m.receiverId === userId1).length
+        unreadCount: messages.filter((m: Message) => !m.read && m.receiverId === userId1).length
       };
       
       set({ 

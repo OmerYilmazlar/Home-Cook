@@ -14,7 +14,7 @@ export default function MessageScreen() {
 
   
   const { user } = useAuthStore();
-  const { currentConversation, messages, fetchMessages, sendMessage, markAsRead, initializeMessages, createConversation } = useMessagingStore();
+  const { currentConversation, messages, fetchMessages, sendMessage, markAsRead, initializeMessages } = useMessagingStore();
   
   const [messageText, setMessageText] = useState('');
 
@@ -51,81 +51,48 @@ export default function MessageScreen() {
   // Refresh messages when screen comes into focus or when id/user changes
   useFocusEffect(
     React.useCallback(() => {
-      if (id && user) {
-        fetchMessages(id);
+      if (id && typeof id === 'string' && user?.id) {
+        fetchMessages(user.id, id);
       }
-    }, [id, user])
+    }, [id, user?.id])
   );
   
   useEffect(() => {
-    if (currentConversation && messages.length > 0) {
-      // Mark unread messages as read
-      const unreadMessageIds = messages
-        .filter(m => !m.read && m.receiverId === user?.id)
-        .map(m => m.id);
-      
-      if (unreadMessageIds.length > 0) {
-        markAsRead(unreadMessageIds);
+    if (messages.length > 0 && user?.id && typeof id === 'string') {
+      const hasUnread = messages.some(m => !m.read && m.receiverId === user.id);
+      if (hasUnread) {
+        markAsRead(user.id, id);
       }
     }
-  }, [currentConversation, messages]);
+  }, [messages, user?.id, id]);
   
   const getOtherUser = () => {
-    if (!user) return null;
-    
-    // If we have a current conversation, find the other participant
-    if (currentConversation) {
-      const otherUserId = currentConversation.participants.find(
-        participantId => participantId !== user.id
-      );
-      
-      if (otherUserId) {
-        const allUsers = [...mockCooks, ...mockCustomers];
-        return allUsers.find(u => u.id === otherUserId);
-      }
-    }
-    
-    // If no conversation yet, use the id from params to find the user
-    if (id) {
-      const allUsers = [...mockCooks, ...mockCustomers];
-      return allUsers.find(u => u.id === id);
-    }
-    
-    return null;
+    if (!id || typeof id !== 'string') return null;
+    const allUsers = [...mockCooks, ...mockCustomers];
+    return allUsers.find(u => u.id === id) ?? null;
   };
   
   const otherUser = getOtherUser();
   
   const handleSend = async () => {
-    if (!messageText.trim() || !user) return;
-    
+    if (!messageText.trim() || !user?.id || typeof id !== 'string') return;
+
     console.log('Attempting to send message:', {
       messageText: messageText.trim(),
-      user: user?.id,
+      user: user.id,
       otherUserId: id,
-      currentConversation: currentConversation?.id
+      currentConversation: currentConversation?.id,
     });
-    
+
     try {
-      // If no current conversation, create one
-      if (!currentConversation && id && user) {
-        console.log('Creating new conversation between:', user.id, 'and', id);
-        const conversationId = await createConversation([user.id, id]);
-        if (conversationId) {
-          await fetchMessages(conversationId);
-        }
-      }
-      
-      // Send the message
       await sendMessage({
         senderId: user.id,
-        receiverId: id, // Use the id from params directly
+        receiverId: id,
         content: messageText.trim(),
       });
-      
+
       setMessageText('');
-      
-      // Scroll to bottom after sending
+
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);

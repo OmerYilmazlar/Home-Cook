@@ -21,7 +21,8 @@ export default function ConversationItem({
   const router = useRouter();
   
   const handlePress = () => {
-    router.push(`/messages/${conversation.id}`);
+    const otherUserId = conversation.participants.find(p => p !== currentUserId) || conversation.participants[0];
+    router.push(`/messages/${otherUserId}`);
   };
   
   const formatTime = (dateString?: string) => {

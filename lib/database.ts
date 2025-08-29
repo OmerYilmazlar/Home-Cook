@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User, Cook, Customer, Meal, Reservation, Message, UserType } from '@/types';
 
 // Helper function to convert database user to app user type
@@ -641,6 +642,60 @@ export const mealService = {
       }))
       .sort((a, b) => b.count - a.count);
   }
+};
+
+// Simple AsyncStorage-backed message service for local/demo messaging
+export const messageService = {
+  async getMessagesBetweenUsers(userId1: string, userId2: string): Promise<Message[]> {
+    try {
+      const raw = await AsyncStorage.getItem('messages');
+      const all: Message[] = raw ? JSON.parse(raw) as Message[] : [];
+      const result = all
+        .filter((m: Message) => (m.senderId === userId1 && m.receiverId === userId2) || (m.senderId === userId2 && m.receiverId === userId1))
+        .sort((a: Message, b: Message) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      return result;
+    } catch (e) {
+      console.log('messageService.getMessagesBetweenUsers error', e);
+      return [];
+    }
+  },
+
+  async sendMessage(senderId: string, receiverId: string, content: string): Promise<Message> {
+    const newMessage: Message = {
+      id: `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      senderId,
+      receiverId,
+      content,
+      createdAt: new Date().toISOString(),
+      read: false,
+    };
+    try {
+      const raw = await AsyncStorage.getItem('messages');
+      const all: Message[] = raw ? JSON.parse(raw) as Message[] : [];
+      const updated = [...all, newMessage];
+      await AsyncStorage.setItem('messages', JSON.stringify(updated));
+      return newMessage;
+    } catch (e) {
+      console.log('messageService.sendMessage error', e);
+      return newMessage;
+    }
+  },
+
+  async markMessagesAsRead(userId: string, otherUserId: string): Promise<void> {
+    try {
+      const raw = await AsyncStorage.getItem('messages');
+      const all: Message[] = raw ? JSON.parse(raw) as Message[] : [];
+      const updated = all.map((m: Message) => {
+        if (m.senderId === otherUserId && m.receiverId === userId && !m.read) {
+          return { ...m, read: true } as Message;
+        }
+        return m;
+      });
+      await AsyncStorage.setItem('messages', JSON.stringify(updated));
+    } catch (e) {
+      console.log('messageService.markMessagesAsRead error', e);
+    }
+  },
 };
 
 // Reservation mappers

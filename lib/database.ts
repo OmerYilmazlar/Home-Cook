@@ -716,6 +716,7 @@ export const messageService = {
       const { data, error } = await supabase
         .from('messages')
         .insert({
+          id: optimistic.id,
           sender_id: senderId,
           receiver_id: receiverId,
           content,
